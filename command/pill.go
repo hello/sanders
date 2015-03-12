@@ -1,9 +1,7 @@
 package command
 
 import (
-	/*
-	 *"fmt"
-	 */
+	"fmt"
 	/*
 	 *"github.com/crowdmob/goamz/aws"
 	 */
@@ -24,9 +22,20 @@ func (c *PillCommand) Help() string {
 }
 
 func (c *PillCommand) Run(args []string) int {
+	if 0 == len(args) {
+		c.Ui.Error(fmt.Sprintf("Please provide a file name."))
+	} else {
+		for _, fname := range args {
+			upload(c, fname)
+		}
+	}
 	return 0
 }
 
 func (c *PillCommand) Synopsis() string {
 	return "Upload pill key and csv to Hello HQ"
+}
+
+func upload(c *PillCommand, fname string) {
+	c.Ui.Info(fmt.Sprintf("Uploading file %s", fname))
 }
