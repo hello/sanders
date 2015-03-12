@@ -5,6 +5,8 @@ import (
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"github.com/mitchellh/cli"
+	"os"
+	"path/filepath"
 	/*
 	 *"strconv"
 	 */
@@ -53,6 +55,40 @@ func (c *PillCommand) Synopsis() string {
 	return "Upload pill key and csv to Hello HQ"
 }
 
-func upload(c *PillCommand, fname string) {
-	c.Ui.Info(fmt.Sprintf("Uploading file %s", fname))
+func determineType(fname string) string {
+	p, _ := filepath.Abs(fname)
+	if _, err := os.Stat(p); err == nil {
+		basename := filepath.Base(p)
+		if _, pe := filepath.Match(`*.csv`, basename); pe == nil {
+			return "csv"
+		} else if _, pe := filepath.Match(`90500007*`, basename); pe == nil {
+			if 20 <= len(basename) && len(basename) <= 21 {
+				return "pill"
+			}
+		}
+	}
+	return "unkown"
+}
+func uploadObj(k string, v string) error {
+	return nil
+}
+func upload(c *PillCommand, fname string) error {
+	t := determineType(fname)
+
+	if t == "pill" {
+		c.Ui.Info(fmt.Sprintf("Uploading %s %s", t, fname))
+	} else if t == "csv" {
+		c.Ui.Info(fmt.Sprintf("Uploading %s %s", t, fname))
+	} else {
+		c.Ui.Warn(fmt.Sprintf("Invalid Object %s", fname))
+	}
+	return nil
+}
+func connectToS3(access string, secret string) *s3.Bucket {
+	auth := aws.Auth{
+		AccessKey: access,
+		SecretKey: secret,
+	}
+	connection := s3.New(auth, aws.USEast)
+	return connection.Bucket("hello-jabil")
 }
