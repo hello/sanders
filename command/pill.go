@@ -1,10 +1,16 @@
 package command
 
 import (
-	"fmt"
-	"github.com/crowdmob/goamz/aws"
+	/*
+	 *"fmt"
+	 */
+	/*
+	 *"github.com/crowdmob/goamz/aws"
+	 */
 	"github.com/mitchellh/cli"
-	"strconv"
+	/*
+	 *"strconv"
+	 */
 	"strings"
 )
 
