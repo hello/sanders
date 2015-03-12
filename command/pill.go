@@ -27,7 +27,7 @@ func (c *PillCommand) Run(args []string) int {
 		SecretKey: AwsSecretKey,
 	}
 	connection := s3.New(auth, aws.USEast)
-	bucket := connection.Bucket("hello-firmware")
+	bucket := connection.Bucket("hello-jabil")
 	res, err := bucket.List("", "", "", 1000)
 
 	if err != nil {
