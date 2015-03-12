@@ -57,6 +57,11 @@ func init() {
 				Ui: cui,
 			}, nil
 		},
+		"pill": func() (cli.Command, error) {
+			return &command.PillCommand{
+				Ui: cui,
+			}, nil
+		},
 	}
 }
 
