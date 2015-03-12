@@ -19,7 +19,7 @@ type PillCommand struct {
 }
 
 func (c *PillCommand) Help() string {
-	helpText := `Usage: hello pill $key|$csv`
+	helpText := `Usage: hello pill [$key|$csv]`
 	return strings.TrimSpace(helpText)
 }
 
