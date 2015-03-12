@@ -26,37 +26,6 @@ func init() {
 		},
 	}
 	Commands = map[string]cli.CommandFactory{
-
-		"status": func() (cli.Command, error) {
-			return &command.StatusCommand{
-				Ui: cui,
-			}, nil
-		},
-		"deploy": func() (cli.Command, error) {
-			return &command.DeployCommand{
-				Ui: cui,
-			}, nil
-		},
-		"build": func() (cli.Command, error) {
-			return &command.BuildCommand{
-				Ui: cui,
-			}, nil
-		},
-		"flip": func() (cli.Command, error) {
-			return &command.FlipCommand{
-				Ui: cui,
-			}, nil
-		},
-		"asg": func() (cli.Command, error) {
-			return &command.ASGCommand{
-				Ui: cui,
-			}, nil
-		},
-		"hosts": func() (cli.Command, error) {
-			return &command.HostsCommand{
-				Ui: cui,
-			}, nil
-		},
 		"pill": func() (cli.Command, error) {
 			return &command.PillCommand{
 				Ui: cui,
