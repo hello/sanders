@@ -1,8 +1,8 @@
 package main
 
 import (
+	"./command"
 	"github.com/mitchellh/cli"
-	"github.com/pims/sanders/command"
 	"os"
 	"os/signal"
 )
