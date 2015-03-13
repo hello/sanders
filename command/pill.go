@@ -21,7 +21,7 @@ func (c *PillCommand) Help() string {
 }
 
 func (c *PillCommand) Run(args []string) int {
-	c.Ui.Info(fmt.Sprintf("Establishing connection..."))
+	c.Ui.Info(fmt.Sprintf("Establishing connection with %s", string(AwsSecretKey)[:2]))
 	bucket := connectToS3(AwsAccessKey, AwsSecretKey)
 
 	if 0 == len(args) {
