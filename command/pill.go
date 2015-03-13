@@ -17,35 +17,28 @@ type PillCommand struct {
 	Ui cli.ColoredUi
 }
 
+var bucket s3.Bucket
+
 func (c *PillCommand) Help() string {
 	helpText := `Usage: hello pill [$key|$csv]`
 	return strings.TrimSpace(helpText)
 }
 
 func (c *PillCommand) Run(args []string) int {
-	c.Ui.Info(fmt.Sprintf("Establishing connection using AccessKey  %s", AwsAccessKey))
-	auth := aws.Auth{
-		AccessKey: AwsAccessKey,
-		SecretKey: AwsSecretKey,
-	}
-	connection := s3.New(auth, aws.USEast)
-	bucket := connection.Bucket("hello-jabil")
-	res, err := bucket.List("", "", "", 1000)
-
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Connection Failed %s", err))
-		return 1
-	} else {
-		for _, v := range res.Contents {
-			c.Ui.Info(fmt.Sprintf("%s", v.Key))
-		}
-	}
+	c.Ui.Info(fmt.Sprintf("Establishing connection...", AwsAccessKey))
+	/*
+	 *bucket := connectToS3(AwsAccessKey, AwsSecretKey)
+	 */
 
 	if 0 == len(args) {
 		c.Ui.Error(fmt.Sprintf("Please provide a file name."))
 	} else {
 		for _, fname := range args {
-			upload(c, fname)
+			err := upload(fname)
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("Uploading %s failed. Error: %s.", fname, err))
+				return 1
+			}
 		}
 	}
 	return 0
@@ -69,20 +62,26 @@ func determineType(fname string) string {
 	}
 	return "unkown"
 }
-func uploadObj(k string, v string) error {
-	return nil
-}
-func upload(c *PillCommand, fname string) error {
-	t := determineType(fname)
-
-	if t == "pill" {
-		c.Ui.Info(fmt.Sprintf("Uploading %s %s", t, fname))
-	} else if t == "csv" {
-		c.Ui.Info(fmt.Sprintf("Uploading %s %s", t, fname))
+func putObj(k string, full_name string) error {
+	file, err := os.Open(full_name)
+	if err != nil {
+		return err
 	} else {
-		c.Ui.Warn(fmt.Sprintf("Invalid Object %s", fname))
+		defer file.Close()
 	}
-	return nil
+	fileInfo, _ := file.Stat()
+	var size int64 = fileInfo.Size()
+	return bucket.PutReader(k, file, size, "application/octet-stream", s3.Private)
+}
+func upload(fname string) error {
+	t := determineType(fname)
+	if t == "unknown" {
+		return fmt.Errorf("Invalid Object %s", fname)
+	} else {
+		full_name, _ := filepath.Abs(fname)
+		key := t + filepath.Base(full_name)
+		return putObj(key, full_name)
+	}
 }
 func connectToS3(access string, secret string) *s3.Bucket {
 	auth := aws.Auth{
