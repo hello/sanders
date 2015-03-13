@@ -34,6 +34,7 @@ func (c *PillCommand) Run(args []string) int {
 			}
 		}
 	}
+	c.Ui.Info(fmt.Sprintf("Pass"))
 	return 0
 }
 
