@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type PillCommand struct {
@@ -31,6 +32,8 @@ func (c *PillCommand) Run(args []string) int {
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("Uploading %s failed. Error: %s.", fname, err))
 				return 1
+			} else {
+				c.Ui.Info(fmt.Sprintf("Uploaded %s", fname))
 			}
 		}
 	}
@@ -52,6 +55,8 @@ func determineKeyType(fname string) string {
 			if 20 <= len(basename) && len(basename) <= 21 {
 				return "pill"
 			}
+		} else if isZip, pe := filepath.Match(`*.zip`, basename); pe == nil && isZip {
+			return "zip"
 		}
 	}
 	return "unkown"
@@ -72,7 +77,7 @@ func upload(bucket *s3.Bucket, fname string) error {
 		return fmt.Errorf("Invalid Object %s", fname)
 	} else {
 		full_name, _ := filepath.Abs(fname)
-		key := t + `/` + filepath.Base(full_name)
+		key := t + `/` + time.Now().UTC().Format("20060102150405") + "-" + filepath.Base(full_name)
 		return putObj(bucket, key, full_name)
 	}
 }
