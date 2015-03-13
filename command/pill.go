@@ -48,21 +48,21 @@ func (c *PillCommand) Synopsis() string {
 	return "Upload pill key and csv to Hello HQ"
 }
 
-func determineKeyType(fname string) string {
+func determineKeyType(fname string) (string, error) {
 	p, _ := filepath.Abs(fname)
 	if _, err := os.Stat(p); err == nil {
 		basename := filepath.Base(p)
 		if isCSV, pe := filepath.Match(`*.csv`, basename); pe == nil && isCSV {
-			return "csv"
+			return "csv", nil
 		} else if isPill, pe := filepath.Match(`90500007*`, basename); pe == nil && isPill {
 			if 20 <= len(basename) && len(basename) <= 21 {
-				return "pill"
+				return "pill", nil
 			}
 		} else if isZip, pe := filepath.Match(`*.zip`, basename); pe == nil && isZip {
-			return "zip"
+			return "zip", nil
 		}
 	}
-	return "unknown"
+	return "unknown", errors.New("Invalid Object")
 }
 func putObj(bucket *s3.Bucket, k string, fullName string) error {
 	if file, err := os.Open(fullName); err == nil {
@@ -74,9 +74,8 @@ func putObj(bucket *s3.Bucket, k string, fullName string) error {
 	}
 }
 func upload(bucket *s3.Bucket, fname string) error {
-	t := determineKeyType(fname)
-	if t == "unknown" {
-		return errors.New("Invalid Object")
+	if t, err := determineKeyType(fname); err != nil {
+		return err
 	} else {
 		fullName, _ := filepath.Abs(fname)
 		key := t + `/` + time.Now().UTC().Format("20060102150405") + "-" + filepath.Base(fullName)
