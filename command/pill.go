@@ -65,14 +65,13 @@ func determineKeyType(fname string) string {
 	return "unkown"
 }
 func putObj(bucket *s3.Bucket, k string, fullName string) error {
-	file, err := os.Open(fullName)
-	if err != nil {
-		return err
-	} else {
+	if file, err := os.Open(fullName); err == nil {
 		defer file.Close()
+		fileInfo, _ := file.Stat()
+		return bucket.PutReader(k, file, fileInfo.Size(), "application/octet-stream", s3.Private)
+	} else {
+		return err
 	}
-	fileInfo, _ := file.Stat()
-	return bucket.PutReader(k, file, fileInfo.Size(), "application/octet-stream", s3.Private)
 }
 func upload(bucket *s3.Bucket, fname string) error {
 	t := determineKeyType(fname)
