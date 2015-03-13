@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"github.com/mitchellh/cli"
 	"gopkg.in/amz.v1/aws"
@@ -16,7 +17,7 @@ type PillCommand struct {
 }
 
 func (c *PillCommand) Help() string {
-	helpText := `Usage: hello pill [$key|$csv]`
+	helpText := `Usage: hello pill [$zip|$key|$csv]`
 	return strings.TrimSpace(helpText)
 }
 
@@ -30,8 +31,7 @@ func (c *PillCommand) Run(args []string) int {
 		return 1
 	} else {
 		for _, fname := range args {
-			err := upload(bucket, fname)
-			if err != nil {
+			if err := upload(bucket, fname); err != nil {
 				c.Ui.Error(fmt.Sprintf("Uploading %s failed. Error: %s.", fname, err))
 				c.Ui.Error(fmt.Sprintf("Fail"))
 				return 1
@@ -62,7 +62,7 @@ func determineKeyType(fname string) string {
 			return "zip"
 		}
 	}
-	return "unkown"
+	return "unknown"
 }
 func putObj(bucket *s3.Bucket, k string, fullName string) error {
 	if file, err := os.Open(fullName); err == nil {
@@ -76,7 +76,7 @@ func putObj(bucket *s3.Bucket, k string, fullName string) error {
 func upload(bucket *s3.Bucket, fname string) error {
 	t := determineKeyType(fname)
 	if t == "unknown" {
-		return fmt.Errorf("Invalid Object %s", fname)
+		return errors.New("Invalid Object")
 	} else {
 		fullName, _ := filepath.Abs(fname)
 		key := t + `/` + time.Now().UTC().Format("20060102150405") + "-" + filepath.Base(fullName)
