@@ -64,8 +64,8 @@ func determineKeyType(fname string) string {
 	}
 	return "unkown"
 }
-func putObj(bucket *s3.Bucket, k string, full_name string) error {
-	file, err := os.Open(full_name)
+func putObj(bucket *s3.Bucket, k string, fullName string) error {
+	file, err := os.Open(fullName)
 	if err != nil {
 		return err
 	} else {
@@ -79,9 +79,9 @@ func upload(bucket *s3.Bucket, fname string) error {
 	if t == "unknown" {
 		return fmt.Errorf("Invalid Object %s", fname)
 	} else {
-		full_name, _ := filepath.Abs(fname)
-		key := t + `/` + time.Now().UTC().Format("20060102150405") + "-" + filepath.Base(full_name)
-		return putObj(bucket, key, full_name)
+		fullName, _ := filepath.Abs(fname)
+		key := t + `/` + time.Now().UTC().Format("20060102150405") + "-" + filepath.Base(fullName)
+		return putObj(bucket, key, fullName)
 	}
 }
 func connectToS3(access string, secret string) *s3.Bucket {
