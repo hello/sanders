@@ -26,11 +26,14 @@ func (c *PillCommand) Run(args []string) int {
 
 	if 0 == len(args) {
 		c.Ui.Error(fmt.Sprintf("Please provide a file name."))
+		c.Ui.Error(fmt.Sprintf("Fail"))
+		return 1
 	} else {
 		for _, fname := range args {
 			err := upload(bucket, fname)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("Uploading %s failed. Error: %s.", fname, err))
+				c.Ui.Error(fmt.Sprintf("Fail"))
 				return 1
 			} else {
 				c.Ui.Info(fmt.Sprintf("Uploaded %s", fname))
