@@ -68,6 +68,9 @@ func putObj(bucket *s3.Bucket, k string, fullName string) error {
 	if file, err := os.Open(fullName); err == nil {
 		defer file.Close()
 		fileInfo, _ := file.Stat()
+		if fileInfo.Size() == 0 {
+			return errors.New("File size can not be 0.")
+		}
 		return bucket.PutReader(k, file, fileInfo.Size(), "application/octet-stream", s3.Private)
 	} else {
 		return err
