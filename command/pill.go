@@ -1,11 +1,13 @@
 package command
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"github.com/mitchellh/cli"
 	"gopkg.in/amz.v1/aws"
 	"gopkg.in/amz.v1/s3"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,7 +33,7 @@ func (c *PillCommand) Run(args []string) int {
 		return 1
 	} else {
 		for _, fname := range args {
-			if err := upload(bucket, fname); err == nil {
+			if err := uploadAndVerify(bucket, fname); err == nil {
 				c.Ui.Info(fmt.Sprintf("Uploaded %s", fname))
 			} else {
 				c.Ui.Error(fmt.Sprintf("Uploading %s failed. Error: %s.", fname, err))
@@ -64,25 +66,37 @@ func determineKeyType(fname string) (string, error) {
 	}
 	return "unknown", errors.New("Invalid Object")
 }
-func putObj(bucket *s3.Bucket, k string, fullName string) error {
-	if file, err := os.Open(fullName); err == nil {
-		defer file.Close()
-		fileInfo, _ := file.Stat()
-		if fileInfo.Size() == 0 {
-			return errors.New("File size can not be 0.")
-		}
-		return bucket.PutReader(k, file, fileInfo.Size(), "application/octet-stream", s3.Private)
-	} else {
+func putObj(bucket *s3.Bucket, key string, content []byte) error {
+	return bucket.Put(key, content, "application/octet-stream", s3.Private)
+}
+func verify(bucket *s3.Bucket, key string) error {
+	return nil
+}
+func uploadAndVerify(bucket *s3.Bucket, fname string) error {
+	fullName, _ := filepath.Abs(fname)
+	t, err := determineKeyType(fullName)
+	if err != nil {
 		return err
 	}
-}
-func upload(bucket *s3.Bucket, fname string) error {
-	if t, err := determineKeyType(fname); err == nil {
-		fullName, _ := filepath.Abs(fname)
-		key := t + `/` + time.Now().UTC().Format("20060102150405") + "-" + filepath.Base(fullName)
-		return putObj(bucket, key, fullName)
-	} else {
+	key := t + `/` + time.Now().UTC().Format("20060102150405") + "-" + filepath.Base(fullName)
+	fileContent, err := ioutil.ReadFile(fullName)
+	if err != nil {
 		return err
+	}
+	localHash := sha256.Sum256(fileContent)
+	err = putObj(bucket, key, fileContent)
+	if err != nil {
+		return err
+	}
+	fileContent, err = bucket.Get(key)
+	if err != nil {
+		return err
+	}
+	remoteHash := sha256.Sum256(fileContent)
+	if localHash == remoteHash {
+		return nil
+	} else {
+		return errors.New("File hash mismatch")
 	}
 }
 func connectToS3(access string, secret string) *s3.Bucket {
