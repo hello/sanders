@@ -82,6 +82,8 @@ func uploadAndVerify(bucket *s3.Bucket, fname string) error {
 	fileContent, err := ioutil.ReadFile(fullName)
 	if err != nil {
 		return err
+	} else if len(fileContent) == 0 {
+		return errors.New("File content can not be 0")
 	}
 	localHash := sha256.Sum256(fileContent)
 	err = putObj(bucket, key, fileContent)
