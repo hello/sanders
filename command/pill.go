@@ -1,12 +1,13 @@
 package command
 
 import (
-	"crypto/sha256"
+	"crypto/md5"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/mitchellh/cli"
-	"gopkg.in/amz.v1/aws"
-	"gopkg.in/amz.v1/s3"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -67,7 +68,14 @@ func determineKeyType(fname string) (string, error) {
 	return "unknown", errors.New("Invalid Object")
 }
 func putObj(bucket *s3.Bucket, key string, content []byte) error {
-	return bucket.Put(key, content, "application/octet-stream", s3.Private)
+	md5Sum := md5.Sum(content)
+	md5B64 := base64.StdEncoding.EncodeToString(md5Sum[:])
+	fmt.Printf("MD5 is %s\n", md5B64)
+	headers := map[string][]string{
+		"Content-Type": {"application/octet-stream"},
+		"Content-MD5":  {md5B64},
+	}
+	return bucket.PutHeader(key, content, headers, s3.Private)
 }
 func verify(bucket *s3.Bucket, key string) error {
 	return nil
@@ -85,21 +93,7 @@ func uploadAndVerify(bucket *s3.Bucket, fname string) error {
 	} else if len(fileContent) == 0 {
 		return errors.New("File content can not be 0")
 	}
-	localHash := sha256.Sum256(fileContent)
-	err = putObj(bucket, key, fileContent)
-	if err != nil {
-		return err
-	}
-	fileContent, err = bucket.Get(key)
-	if err != nil {
-		return err
-	}
-	remoteHash := sha256.Sum256(fileContent)
-	if localHash == remoteHash {
-		return nil
-	} else {
-		return errors.New("File hash mismatch")
-	}
+	return putObj(bucket, key, fileContent)
 }
 func connectToS3(access string, secret string) *s3.Bucket {
 	auth := aws.Auth{
