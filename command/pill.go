@@ -20,7 +20,7 @@ type PillCommand struct {
 }
 
 func (c *PillCommand) Help() string {
-	helpText := `Usage: hello pill [$zip|$key|$csv]`
+	helpText := `Usage: hello pch $log`
 	return strings.TrimSpace(helpText)
 }
 
@@ -48,21 +48,15 @@ func (c *PillCommand) Run(args []string) int {
 }
 
 func (c *PillCommand) Synopsis() string {
-	return "Upload pill key and csv to Hello HQ"
+	return "Upload to Hello HQ"
 }
 
 func determineKeyType(fname string) (string, error) {
 	p, _ := filepath.Abs(fname)
 	if _, err := os.Stat(p); err == nil {
 		basename := filepath.Base(p)
-		if isCSV, pe := filepath.Match(`*.csv`, basename); pe == nil && isCSV {
-			return "csv", nil
-		} else if isPill, pe := filepath.Match(`90500007*`, basename); pe == nil && isPill {
-			if 20 <= len(basename) && len(basename) <= 21 {
-				return "pill", nil
-			}
-		} else if isZip, pe := filepath.Match(`*.zip`, basename); pe == nil && isZip {
-			return "zip", nil
+		if isLog, pe := filepath.Match(`*.log`, basename); pe == nil && isLog {
+			return "log", nil
 		}
 	}
 	return "unknown", errors.New("Invalid Object")
@@ -101,5 +95,5 @@ func connectToS3(access string, secret string) *s3.Bucket {
 		SecretKey: secret,
 	}
 	connection := s3.New(auth, aws.USEast)
-	return connection.Bucket("hello-jabil")
+	return connection.Bucket("hello-pch")
 }
