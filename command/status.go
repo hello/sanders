@@ -74,6 +74,7 @@ func (c *StatusCommand) Run(args []string) int {
 		}
 
 		for k, _ := range store {
+
 			msg := fmt.Sprintf("→\t%s\t%s\t%s\t%s\t%s\t%s [%s]",
 				statusStore[k],
 				nameStore[k],
@@ -90,6 +91,15 @@ func (c *StatusCommand) Run(args []string) int {
 			}
 		}
 		c.Ui.Info("")
+
+		// groupnames := make([]string, 2)
+		// groupnames[0] = "suripu-workers-prod"
+		// groupnames[1] = "suripu-workers-prod-green"
+
+		// req := &autoscaling.AutoScalingGroupNamesType{
+		// 	AutoScalingGroupNames: groupnames,
+		// }
+		// resp, err := cli.DescribeAutoScalingGroups(req)
 	}
 
 	c.Ui.Output("")

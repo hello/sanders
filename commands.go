@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/hello/sanders/command"
 	"github.com/mitchellh/cli"
-	"github.com/pims/sanders/command"
 	"os"
 	"os/signal"
 )
@@ -32,26 +32,26 @@ func init() {
 				Ui: cui,
 			}, nil
 		},
+		"sunset": func() (cli.Command, error) {
+			return &command.SunsetCommand{
+				Ui: cui,
+			}, nil
+		},
+		// "build": func() (cli.Command, error) {
+		// 	return &command.BuildCommand{
+		// 		Ui: cui,
+		// 	}, nil
+		// },
 		"deploy": func() (cli.Command, error) {
 			return &command.DeployCommand{
 				Ui: cui,
 			}, nil
 		},
-		"build": func() (cli.Command, error) {
-			return &command.BuildCommand{
-				Ui: cui,
-			}, nil
-		},
-		"flip": func() (cli.Command, error) {
-			return &command.FlipCommand{
-				Ui: cui,
-			}, nil
-		},
-		"asg": func() (cli.Command, error) {
-			return &command.ASGCommand{
-				Ui: cui,
-			}, nil
-		},
+		// "asg": func() (cli.Command, error) {
+		// 	return &command.ASGCommand{
+		// 		Ui: cui,
+		// 	}, nil
+		// },
 		"hosts": func() (cli.Command, error) {
 			return &command.HostsCommand{
 				Ui: cui,

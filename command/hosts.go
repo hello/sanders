@@ -8,6 +8,7 @@ import (
 	"github.com/awslabs/aws-sdk-go/gen/ec2"
 	"github.com/mitchellh/cli"
 	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -64,7 +65,7 @@ func (c *HostsCommand) Run(args []string) int {
 			continue
 		}
 
-		c.Ui.Info(fmt.Sprintf("ASG: %s", *asg.AutoScalingGroupName))
+		c.Ui.Info(fmt.Sprintf("ASG: %s [%s]", *asg.AutoScalingGroupName, *asg.LaunchConfigurationName))
 
 		describeReq := &ec2.DescribeInstancesRequest{
 			InstanceIDs: instanceIds,
@@ -84,8 +85,8 @@ func (c *HostsCommand) Run(args []string) int {
 			}
 		}
 		if *sync {
-
-			filePath := "/Users/tim/.dsh/group/" + *asg.AutoScalingGroupName
+			homedir := os.Getenv("HOME")
+			filePath := homedir + "/.dsh/group/" + *asg.AutoScalingGroupName
 			err = ioutil.WriteFile(filePath, []byte(content), 0644)
 			if err != nil {
 				c.Ui.Info(fmt.Sprintf("Failed saving file %s. %s", *asg.AutoScalingGroupName, err))

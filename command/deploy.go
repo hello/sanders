@@ -1,11 +1,13 @@
 package command
 
 import (
-	"fmt"
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/ec2"
+	"github.com/awslabs/aws-sdk-go/aws"
+	"github.com/awslabs/aws-sdk-go/gen/autoscaling"
 	"github.com/mitchellh/cli"
-	"sort"
+	// "github.com/mitchellh/packer/packer"
+	"fmt"
+	// "sort"
+	"strconv"
 	"strings"
 )
 
@@ -14,55 +16,127 @@ type DeployCommand struct {
 }
 
 func (c *DeployCommand) Help() string {
-	helpText := `
-Usage: hello status $appname ...
-`
+	helpText := `Usage: hello deploy`
 	return strings.TrimSpace(helpText)
 }
 
 func (c *DeployCommand) Run(args []string) int {
-	auth, _ := aws.EnvAuth()
-	ecSquare := ec2.New(auth, aws.USEast)
 
-	appName := args[0]
-	c.Ui.Output(fmt.Sprintf("↳ Deploying new app for : %s", appName))
+	plan := `
 
-	// Find the newest ami matching app name
-	filter := ec2.NewFilter()
-	filter.Add("tag:suripu-app-prod", appName)
+--> Plan:
+--> ASG: %s
+--> LC: %s
+--> # of servers: %d
 
-	amiResp, err := ecSquare.Images(nil, filter)
+`
+	creds, _ := aws.EnvCreds()
+	service := autoscaling.New(creds, "us-east-1", nil)
+
+	version, err := c.Ui.Ask("Version: ")
+
+	desiredCapacityByLCName := make(map[string]int)
+	desiredCapacityByLCName["suripu-app"] = 2
+	desiredCapacityByLCName["suripu-service"] = 2
+	desiredCapacityByLCName["suripu-workers"] = 1
+
+	possibleLCs := make([]string, 3)
+	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
+	for idx, appName := range apps {
+		possibleLCs[idx] = fmt.Sprintf("%s-prod-%s", appName, version)
+	}
+	fmt.Println(possibleLCs)
+	describeLCReq := &autoscaling.LaunchConfigurationNamesType{
+		LaunchConfigurationNames: possibleLCs,
+		MaxRecords:               aws.Integer(3),
+	}
+
+	lcsResp, err := service.DescribeLaunchConfigurations(describeLCReq)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error: %s", err))
+		c.Ui.Error(fmt.Sprintf("%s", err))
+		return 1
 	}
 
-	amiNames := make([]string, 0)
-	amiStore := make(map[string]string)
-	for _, image := range amiResp.Images {
-		amiNames = append(amiNames, image.Name)
-		amiStore[image.Name] = image.Id
+	for idx, stuff := range lcsResp.LaunchConfigurations {
+		c.Ui.Info(fmt.Sprintf("[%d] %s", idx, *stuff.LaunchConfigurationName))
 	}
 
-	c.Ui.Output(strings.Join(amiNames, ";"))
-	sort.Strings(amiNames)
-	// sort.Sort(sort.Reverse(sort.StringSlice(amiNames)))
-	c.Ui.Output(strings.Join(amiNames, ";"))
-	c.Ui.Info(fmt.Sprintf("Using: %s %s", amiNames[0], amiStore[amiNames[0]]))
-	c.Ui.Output("")
+	app, err := c.Ui.Ask("Launch configuration #: ")
+	appIdx, _ := strconv.Atoi(app)
 
-	sgs := make([]ec2.SecurityGroup, 1)
-	sgs[0] = ec2.SecurityGroup{Id: "sg-5efc4f31"}
+	if err != nil || appIdx >= len(lcsResp.LaunchConfigurations) {
+		c.Ui.Error(fmt.Sprintf("Error reading app #: %s", err))
+		return 1
+	}
 
-	options := ec2.RunInstancesOptions{ImageId: amiStore[amiNames[0]], MinCount: 1, MaxCount: 1, InstanceType: "t1.micro", SubnetId: "subnet-0a524964", SecurityGroups: sgs}
-	runInstancesResp, err := ecSquare.RunInstances(&options)
+	lcName := *lcsResp.LaunchConfigurations[appIdx].LaunchConfigurationName
+	parts := strings.Split(lcName, "-prod-")
 
+	groupnames := make([]string, 2)
+	groupnames[0] = fmt.Sprintf("%s-prod", parts[0])
+	groupnames[1] = fmt.Sprintf("%s-prod-green", parts[0])
+
+	describeASGreq := &autoscaling.AutoScalingGroupNamesType{
+		AutoScalingGroupNames: groupnames,
+	}
+
+	describeASGResp, err := service.DescribeAutoScalingGroups(describeASGreq)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error running instance: %s", err))
+		c.Ui.Error(fmt.Sprintf("%s", err))
+		return 1
 	}
 
-	c.Ui.Info(fmt.Sprintf("ReservationId: %s", runInstancesResp.RequestId))
-	c.Ui.Output("Please check status of creating in the instance in the console at the moment.")
+	desiredCapacity, found := desiredCapacityByLCName[parts[0]]
+	if !found {
+		c.Ui.Error(fmt.Sprintf("%s not found. Aborting", parts[0]))
+		return 1
+	}
 
+	for _, asg := range describeASGResp.AutoScalingGroups {
+		asgName := *asg.AutoScalingGroupName
+		if *asg.DesiredCapacity == 0 {
+			// c.Ui.Info(fmt.Sprintf("Update ASG %s with launch configuration:", asgName))
+
+			c.Ui.Warn(fmt.Sprintf(plan, asgName, lcName, desiredCapacity))
+
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("%s", err))
+				return 1
+			}
+
+			ok, err := c.Ui.Ask("'ok' if you agree, anything else to cancel: ")
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("%s", err))
+				return 1
+			}
+
+			if ok != "ok" {
+				c.Ui.Warn("Cancelled.")
+				return 0
+			}
+			updateReq := &autoscaling.UpdateAutoScalingGroupType{
+				DesiredCapacity:         aws.Integer(desiredCapacity),
+				AutoScalingGroupName:    aws.String(asgName),
+				LaunchConfigurationName: aws.String(lcName),
+				MinSize:                 aws.Integer(desiredCapacity),
+				MaxSize:                 aws.Integer(desiredCapacity * 2),
+			}
+
+			c.Ui.Info("Executing plan:")
+			c.Ui.Info(fmt.Sprintf(plan, asgName, lcName, *updateReq.DesiredCapacity))
+			err = service.UpdateAutoScalingGroup(updateReq)
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("%s", err))
+				return 1
+			}
+			c.Ui.Info("Update autoscaling group request acknowledged")
+
+			continue
+		}
+		c.Ui.Warn(fmt.Sprintf("%s ignored because desired capacity is > 0", asgName))
+	}
+
+	c.Ui.Info("Run: `sanders status` to monitor servers being attached to ELB")
 	return 0
 }
 
