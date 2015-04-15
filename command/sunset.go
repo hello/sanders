@@ -24,10 +24,10 @@ func (c *SunsetCommand) Run(args []string) int {
 
 	plan := `
 
---> Plan:
---> ASG: %s
---> LC: %s
---> # of servers: %d
+Plan:
+--- ASG: %s
+--- LC: %s
+--- # of servers: %d
 
 `
 
@@ -35,10 +35,12 @@ func (c *SunsetCommand) Run(args []string) int {
 	service := autoscaling.New(creds, "us-east-1", nil)
 
 	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
+	c.Ui.Output("Which of the following apps do you want to sunset?\n")
 	for idx, appName := range apps {
 		c.Ui.Info(fmt.Sprintf("[%d] %s", idx, appName))
 	}
 
+	c.Ui.Output("")
 	choiceStr, err := c.Ui.Ask("Choice: #")
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%v", err))
@@ -50,6 +52,8 @@ func (c *SunsetCommand) Run(args []string) int {
 		c.Ui.Error(fmt.Sprintf("Error reading app #: %s", err))
 		return 1
 	}
+
+	c.Ui.Info(fmt.Sprintf("--> proceeding to sunset app: %s\n", apps[choice]))
 
 	groupnames := make([]string, 2)
 	groupnames[0] = fmt.Sprintf("%s-prod", apps[choice])
@@ -74,11 +78,13 @@ func (c *SunsetCommand) Run(args []string) int {
 		instancesPerASG[asgName] = asg
 	}
 
+	c.Ui.Output(fmt.Sprintf("ASG matching app : %s\n", apps[choice]))
 	for idx, asgName := range asgs {
 		asg, _ := instancesPerASG[asgName]
 		c.Ui.Info(fmt.Sprintf("[%d] %s (%d instances)", idx, asgName, len(asg.Instances)))
 	}
 
+	c.Ui.Output("")
 	choiceStr, err = c.Ui.Ask("Choice: #")
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%v", err))

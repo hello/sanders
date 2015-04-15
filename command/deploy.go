@@ -24,16 +24,22 @@ func (c *DeployCommand) Run(args []string) int {
 
 	plan := `
 
---> Plan:
---> ASG: %s
---> LC: %s
---> # of servers: %d
+Plan:
++++ ASG: %s
++++ LC: %s
++++ # of servers to deploy: %d
 
 `
 	creds, _ := aws.EnvCreds()
 	service := autoscaling.New(creds, "us-east-1", nil)
 
-	version, err := c.Ui.Ask("Version: ")
+	version, err := c.Ui.Ask("Which version do you want to deploy (ex 8.8.8): ")
+	if err != nil {
+		c.Ui.Error(fmt.Sprintf("Error reading version #: %s", err))
+		return 1
+	}
+
+	c.Ui.Info(fmt.Sprintf("--> : %s", version))
 
 	desiredCapacityByLCName := make(map[string]int)
 	desiredCapacityByLCName["suripu-app"] = 2
@@ -42,10 +48,11 @@ func (c *DeployCommand) Run(args []string) int {
 
 	possibleLCs := make([]string, 3)
 	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
+
 	for idx, appName := range apps {
 		possibleLCs[idx] = fmt.Sprintf("%s-prod-%s", appName, version)
 	}
-	fmt.Println(possibleLCs)
+
 	describeLCReq := &autoscaling.LaunchConfigurationNamesType{
 		LaunchConfigurationNames: possibleLCs,
 		MaxRecords:               aws.Integer(3),
@@ -57,11 +64,14 @@ func (c *DeployCommand) Run(args []string) int {
 		return 1
 	}
 
+	c.Ui.Output("")
+	c.Ui.Output(fmt.Sprintf("Found the following matching Launch Configurations for version: %s:\n", version))
 	for idx, stuff := range lcsResp.LaunchConfigurations {
 		c.Ui.Info(fmt.Sprintf("[%d] %s", idx, *stuff.LaunchConfigurationName))
 	}
 
-	app, err := c.Ui.Ask("Launch configuration #: ")
+	c.Ui.Output("")
+	app, err := c.Ui.Ask("Launch configuration (LC) #: ")
 	appIdx, _ := strconv.Atoi(app)
 
 	if err != nil || appIdx >= len(lcsResp.LaunchConfigurations) {
@@ -70,6 +80,8 @@ func (c *DeployCommand) Run(args []string) int {
 	}
 
 	lcName := *lcsResp.LaunchConfigurations[appIdx].LaunchConfigurationName
+	c.Ui.Info(fmt.Sprintf("--> proceeding with LC : %s", lcName))
+
 	parts := strings.Split(lcName, "-prod-")
 
 	groupnames := make([]string, 2)
