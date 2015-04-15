@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/awslabs/aws-sdk-go/aws"
-	"github.com/awslabs/aws-sdk-go/gen/autoscaling"
-	"github.com/awslabs/aws-sdk-go/gen/ec2"
+	"github.com/awslabs/aws-sdk-go/service/autoscaling"
+	"github.com/awslabs/aws-sdk-go/service/ec2"
 	"github.com/mitchellh/cli"
 	"io/ioutil"
 	"os"
@@ -33,31 +33,38 @@ func (c *HostsCommand) Run(args []string) int {
 
 	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
 
-	creds, _ := aws.EnvCreds()
-	cli := autoscaling.New(creds, "us-east-1", nil)
-	ec2Cli := ec2.New(creds, "us-east-1", nil)
-
-	groupnames := make([]string, 0)
-	for _, appName := range apps {
-		groupnames = append(groupnames, fmt.Sprintf("%s-prod", appName))
-		groupnames = append(groupnames, fmt.Sprintf("%s-prod-green", appName))
-	}
-
-	req := &autoscaling.AutoScalingGroupNamesType{
-		AutoScalingGroupNames: groupnames,
-	}
-
-	resp, err := cli.DescribeAutoScalingGroups(req)
+	creds, err := aws.EnvCreds()
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("%s", err))
+		c.Ui.Error(fmt.Sprintf("%v", err))
 		return 1
 	}
+	config := &aws.Config{
+		Credentials: creds,
+		Region:      "us-east-1",
+	}
+
+	service := autoscaling.New(config)
+	ec2Service := ec2.New(config)
+
+	groupnames := make([]*string, 0)
+	for _, appName := range apps {
+		one := fmt.Sprintf("%s-prod", appName)
+		two := fmt.Sprintf("%s-prod-green", appName)
+		groupnames = append(groupnames, &one)
+		groupnames = append(groupnames, &two)
+	}
+
+	req := &autoscaling.DescribeAutoScalingGroupsInput{
+		AutoScalingGroupNames: groupnames,
+	}
+	fmt.Printf("%v\n", req)
+	resp, err := service.DescribeAutoScalingGroups(req)
 
 	for _, asg := range resp.AutoScalingGroups {
-		instanceIds := make([]string, 0)
+		instanceIds := make([]*string, 0)
 
 		for _, instance := range asg.Instances {
-			instanceIds = append(instanceIds, *instance.InstanceID)
+			instanceIds = append(instanceIds, instance.InstanceID)
 		}
 
 		if len(instanceIds) == 0 {
@@ -67,11 +74,11 @@ func (c *HostsCommand) Run(args []string) int {
 
 		c.Ui.Info(fmt.Sprintf("ASG: %s [%s]", *asg.AutoScalingGroupName, *asg.LaunchConfigurationName))
 
-		describeReq := &ec2.DescribeInstancesRequest{
+		describeReq := &ec2.DescribeInstancesInput{
 			InstanceIDs: instanceIds,
 		}
 
-		describeResp, err := ec2Cli.DescribeInstances(describeReq)
+		describeResp, err := ec2Service.DescribeInstances(describeReq)
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("%s", err))
 			return 1

@@ -2,7 +2,7 @@ package command
 
 import (
 	"github.com/awslabs/aws-sdk-go/aws"
-	"github.com/awslabs/aws-sdk-go/gen/autoscaling"
+	"github.com/awslabs/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
 	// "github.com/mitchellh/packer/packer"
 	"fmt"
@@ -32,7 +32,12 @@ Plan:
 `
 
 	creds, _ := aws.EnvCreds()
-	service := autoscaling.New(creds, "us-east-1", nil)
+	config := &aws.Config{
+		Credentials: creds,
+		Region:      "us-east-1",
+	}
+
+	service := autoscaling.New(config)
 
 	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
 	c.Ui.Output("Which of the following apps do you want to sunset?\n")
@@ -55,11 +60,13 @@ Plan:
 
 	c.Ui.Info(fmt.Sprintf("--> proceeding to sunset app: %s\n", apps[choice]))
 
-	groupnames := make([]string, 2)
-	groupnames[0] = fmt.Sprintf("%s-prod", apps[choice])
-	groupnames[1] = fmt.Sprintf("%s-prod-green", apps[choice])
+	groupnames := make([]*string, 2)
+	one := fmt.Sprintf("%s-prod", apps[choice])
+	two := fmt.Sprintf("%s-prod-green", apps[choice])
+	groupnames[0] = &one
+	groupnames[1] = &two
 
-	describeASGreq := &autoscaling.AutoScalingGroupNamesType{
+	describeASGreq := &autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: groupnames,
 	}
 
@@ -69,7 +76,7 @@ Plan:
 		return 1
 	}
 
-	instancesPerASG := make(map[string]autoscaling.AutoScalingGroup)
+	instancesPerASG := make(map[string]*autoscaling.AutoScalingGroup)
 
 	asgs := make([]string, 0)
 	for _, asg := range describeASGResp.AutoScalingGroups {
@@ -119,16 +126,17 @@ Plan:
 		return 0
 	}
 
-	updateReq := &autoscaling.UpdateAutoScalingGroupType{
-		DesiredCapacity:      aws.Integer(0),
-		AutoScalingGroupName: aws.String(sunsetAsg),
-		MinSize:              aws.Integer(0),
-		MaxSize:              aws.Integer(0),
+	numServers := int64(0)
+	updateReq := &autoscaling.UpdateAutoScalingGroupInput{
+		DesiredCapacity:      &numServers,
+		AutoScalingGroupName: &sunsetAsg,
+		MinSize:              &numServers,
+		MaxSize:              &numServers,
 	}
 
 	c.Ui.Info("Executing plan:")
 	c.Ui.Info(fmt.Sprintf(plan, sunsetAsg, "N/A", *updateReq.DesiredCapacity))
-	err = service.UpdateAutoScalingGroup(updateReq)
+	_, err = service.UpdateAutoScalingGroup(updateReq)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
 		return 1

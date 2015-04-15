@@ -1,11 +1,10 @@
 package command
 
 import (
-	"github.com/awslabs/aws-sdk-go/aws"
-	"github.com/awslabs/aws-sdk-go/gen/autoscaling"
-	"github.com/mitchellh/cli"
-	// "github.com/mitchellh/packer/packer"
 	"fmt"
+	"github.com/awslabs/aws-sdk-go/aws"
+	"github.com/awslabs/aws-sdk-go/service/autoscaling"
+	"github.com/mitchellh/cli"
 	// "sort"
 	"strconv"
 	"strings"
@@ -31,7 +30,11 @@ Plan:
 
 `
 	creds, _ := aws.EnvCreds()
-	service := autoscaling.New(creds, "us-east-1", nil)
+	config := &aws.Config{
+		Credentials: creds,
+		Region:      "us-east-1",
+	}
+	service := autoscaling.New(config)
 
 	version, err := c.Ui.Ask("Which version do you want to deploy (ex 8.8.8): ")
 	if err != nil {
@@ -41,21 +44,23 @@ Plan:
 
 	c.Ui.Info(fmt.Sprintf("--> : %s", version))
 
-	desiredCapacityByLCName := make(map[string]int)
-	desiredCapacityByLCName["suripu-app"] = 2
-	desiredCapacityByLCName["suripu-service"] = 2
-	desiredCapacityByLCName["suripu-workers"] = 1
+	desiredCapacityByLCName := make(map[string]int64)
+	desiredCapacityByLCName["suripu-app"] = int64(2)
+	desiredCapacityByLCName["suripu-service"] = int64(2)
+	desiredCapacityByLCName["suripu-workers"] = int64(1)
 
-	possibleLCs := make([]string, 3)
+	possibleLCs := make([]*string, 3)
 	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
 
 	for idx, appName := range apps {
-		possibleLCs[idx] = fmt.Sprintf("%s-prod-%s", appName, version)
+		str := fmt.Sprintf("%s-prod-%s", appName, version)
+		possibleLCs[idx] = &str
 	}
 
-	describeLCReq := &autoscaling.LaunchConfigurationNamesType{
+	max := int64(3)
+	describeLCReq := &autoscaling.DescribeLaunchConfigurationsInput{
 		LaunchConfigurationNames: possibleLCs,
-		MaxRecords:               aws.Integer(3),
+		MaxRecords:               &max,
 	}
 
 	lcsResp, err := service.DescribeLaunchConfigurations(describeLCReq)
@@ -84,11 +89,13 @@ Plan:
 
 	parts := strings.Split(lcName, "-prod-")
 
-	groupnames := make([]string, 2)
-	groupnames[0] = fmt.Sprintf("%s-prod", parts[0])
-	groupnames[1] = fmt.Sprintf("%s-prod-green", parts[0])
+	groupnames := make([]*string, 2)
+	one := fmt.Sprintf("%s-prod", parts[0])
+	two := fmt.Sprintf("%s-prod-green", parts[0])
+	groupnames[0] = &one
+	groupnames[1] = &two
 
-	describeASGreq := &autoscaling.AutoScalingGroupNamesType{
+	describeASGreq := &autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: groupnames,
 	}
 
@@ -126,21 +133,24 @@ Plan:
 				c.Ui.Warn("Cancelled.")
 				return 0
 			}
-			updateReq := &autoscaling.UpdateAutoScalingGroupType{
-				DesiredCapacity:         aws.Integer(desiredCapacity),
-				AutoScalingGroupName:    aws.String(asgName),
-				LaunchConfigurationName: aws.String(lcName),
-				MinSize:                 aws.Integer(desiredCapacity),
-				MaxSize:                 aws.Integer(desiredCapacity * 2),
+
+			maxSize := desiredCapacity * 2
+			updateReq := &autoscaling.UpdateAutoScalingGroupInput{
+				DesiredCapacity:         &desiredCapacity,
+				AutoScalingGroupName:    &asgName,
+				LaunchConfigurationName: &lcName,
+				MinSize:                 &desiredCapacity,
+				MaxSize:                 &maxSize,
 			}
 
 			c.Ui.Info("Executing plan:")
 			c.Ui.Info(fmt.Sprintf(plan, asgName, lcName, *updateReq.DesiredCapacity))
-			err = service.UpdateAutoScalingGroup(updateReq)
+			_, err = service.UpdateAutoScalingGroup(updateReq)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s", err))
 				return 1
 			}
+
 			c.Ui.Info("Update autoscaling group request acknowledged")
 
 			continue
