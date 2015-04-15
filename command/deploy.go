@@ -153,5 +153,5 @@ Plan:
 }
 
 func (c *DeployCommand) Synopsis() string {
-	return "Tell hello to deploy a new version of the app"
+	return "deploy a new version of the app to the empty autoscaling group"
 }

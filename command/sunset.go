@@ -140,5 +140,5 @@ Plan:
 }
 
 func (c *SunsetCommand) Synopsis() string {
-	return "Tell hello to deploy a new version of the app"
+	return "sunset instances inside one autoscaling group"
 }
