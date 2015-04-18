@@ -88,7 +88,8 @@ Plan:
 	c.Ui.Output(fmt.Sprintf("ASG matching app : %s\n", apps[choice]))
 	for idx, asgName := range asgs {
 		asg, _ := instancesPerASG[asgName]
-		c.Ui.Info(fmt.Sprintf("[%d] %s (%d instances)", idx, asgName, len(asg.Instances)))
+		parts := strings.Split(*asg.LaunchConfigurationName, "-prod-")
+		c.Ui.Info(fmt.Sprintf("[%d] %s (%d instances running %s)", idx, asgName, len(asg.Instances), parts[1]))
 	}
 
 	c.Ui.Output("")

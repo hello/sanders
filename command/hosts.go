@@ -57,7 +57,7 @@ func (c *HostsCommand) Run(args []string) int {
 	req := &autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: groupnames,
 	}
-	fmt.Printf("%v\n", req)
+
 	resp, err := service.DescribeAutoScalingGroups(req)
 
 	for _, asg := range resp.AutoScalingGroups {
