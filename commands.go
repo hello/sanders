@@ -34,7 +34,7 @@ func init() {
 		"csv": func() (cli.Command, error) {
 			return &command.CSVCommand{
 				Ui:    cui,
-				Debug: true,
+				Debug: false,
 			}, nil
 		},
 	}

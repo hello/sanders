@@ -101,6 +101,12 @@ func (c *CSVCommand) Run(args []string) int {
 			c.Ui.Info(fmt.Sprintf("\t + %s \t: %s", k, v))
 		}
 	}
+	//now dump the result into stdout
+	for k, v := range csvKeys {
+		if v == "" {
+			fmt.Printf("%s\n", k)
+		}
+	}
 
 	return 0
 
