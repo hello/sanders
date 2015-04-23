@@ -55,14 +55,12 @@ func determineKeyType(fname string) (string, error) {
 	p, _ := filepath.Abs(fname)
 	if _, err := os.Stat(p); err == nil {
 		basename := filepath.Base(p)
-		if isCSV, pe := filepath.Match(`*.csv`, basename); pe == nil && isCSV {
-			return "csv", nil
-		} else if isPill, pe := filepath.Match(`90500007*`, basename); pe == nil && isPill {
-			if 20 <= len(basename) && len(basename) <= 21 {
-				return "pill", nil
-			}
-		} else if isZip, pe := filepath.Match(`*.zip`, basename); pe == nil && isZip {
-			return "zip", nil
+		if isPill, pe := filepath.Match(`[pP]ill_*.zip`, basename); pe == nil && isPill {
+			return "pill", nil
+		} else if isMorpheus, pe := filepath.Match(`[mM]orpheus_*.zip`, basename); pe == nil && isMorpheus {
+			return "morpheus", nil
+		} else if isTop, pe := filepath.Match(`[tT]op_*.zip`, basename); pe == nil && isTop {
+			return "top", nil
 		}
 	}
 	return "unknown", errors.New("Invalid Object")
