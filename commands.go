@@ -31,6 +31,11 @@ func init() {
 				Ui: cui,
 			}, nil
 		},
+		"csv": func() (cli.Command, error) {
+			return &command.CSVCommand{
+				Ui: cui,
+			}, nil
+		},
 	}
 }
 
