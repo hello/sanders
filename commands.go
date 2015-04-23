@@ -33,7 +33,8 @@ func init() {
 		},
 		"csv": func() (cli.Command, error) {
 			return &command.CSVCommand{
-				Ui: cui,
+				Ui:    cui,
+				Debug: true,
 			}, nil
 		},
 	}
