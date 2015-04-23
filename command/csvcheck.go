@@ -104,7 +104,7 @@ func (c *CSVCommand) Run(args []string) int {
 	//now dump the result into stdout
 	for k, v := range csvKeys {
 		if v == "" {
-			fmt.Printf("%s\n", k)
+			fmt.Printf("%s\r\n", k)
 		}
 	}
 
