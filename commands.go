@@ -26,7 +26,7 @@ func init() {
 		},
 	}
 	Commands = map[string]cli.CommandFactory{
-		"pill": func() (cli.Command, error) {
+		"upload": func() (cli.Command, error) {
 			return &command.PillCommand{
 				Ui: cui,
 			}, nil

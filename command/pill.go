@@ -20,7 +20,7 @@ type PillCommand struct {
 }
 
 func (c *PillCommand) Help() string {
-	helpText := `Usage: hello pill [$zip|$key|$csv]`
+	helpText := `Usage: hello upload {Morpheus,Pill,Top}*.zip`
 	return strings.TrimSpace(helpText)
 }
 
