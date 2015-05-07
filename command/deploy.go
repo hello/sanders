@@ -67,6 +67,11 @@ Plan:
 		return 1
 	}
 
+	if len(lcsResp.LaunchConfigurations) == 0 {
+		c.Ui.Error(fmt.Sprintf("No launch configuration found for version: %s", version))
+		return 1
+	}
+
 	c.Ui.Output("")
 	c.Ui.Output(fmt.Sprintf("Found the following matching Launch Configurations for version: %s:\n", version))
 	for idx, stuff := range lcsResp.LaunchConfigurations {
