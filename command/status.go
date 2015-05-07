@@ -21,14 +21,8 @@ func (c *StatusCommand) Help() string {
 
 func (c *StatusCommand) Run(args []string) int {
 
-	creds, err := aws.EnvCreds()
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("%v", err))
-		return 1
-	}
 	config := &aws.Config{
-		Credentials: creds,
-		Region:      "us-east-1",
+		Region: "us-east-1",
 	}
 
 	service := elb.New(config)

@@ -33,14 +33,8 @@ func (c *HostsCommand) Run(args []string) int {
 
 	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
 
-	creds, err := aws.EnvCreds()
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("%v", err))
-		return 1
-	}
 	config := &aws.Config{
-		Credentials: creds,
-		Region:      "us-east-1",
+		Region: "us-east-1",
 	}
 
 	service := autoscaling.New(config)
@@ -58,7 +52,7 @@ func (c *HostsCommand) Run(args []string) int {
 		AutoScalingGroupNames: groupnames,
 	}
 
-	resp, err := service.DescribeAutoScalingGroups(req)
+	resp, _ := service.DescribeAutoScalingGroups(req)
 
 	for _, asg := range resp.AutoScalingGroups {
 		instanceIds := make([]*string, 0)

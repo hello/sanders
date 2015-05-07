@@ -29,10 +29,8 @@ Plan:
 +++ # of servers to deploy: %d
 
 `
-	creds, _ := aws.EnvCreds()
 	config := &aws.Config{
-		Credentials: creds,
-		Region:      "us-east-1",
+		Region: "us-east-1",
 	}
 	service := autoscaling.New(config)
 
