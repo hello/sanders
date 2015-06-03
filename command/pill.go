@@ -57,7 +57,7 @@ func determineKeyType(fname string) (string, error) {
 	if _, err := os.Stat(p); err == nil {
 		basename := filepath.Base(p)
 		if isPill, pe := filepath.Match(`[pP]ill_*.zip`, basename); pe == nil && isPill {
-			return "pill", nil
+			return "zip", nil
 		} else if isMorpheus, pe := filepath.Match(`[mM]orpheus_*.zip`, basename); pe == nil && isMorpheus {
 			return "morpheus", nil
 		} else if isTop, pe := filepath.Match(`[tT]op_*.zip`, basename); pe == nil && isTop {
