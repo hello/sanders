@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/base64"
 	"errors"
@@ -65,7 +66,7 @@ func determineKeyType(fname string) (string, error) {
 	}
 	return "unknown", errors.New("Invalid Object")
 }
-func putObj(bucket *s3.Bucket, key string, content []byte) error {
+func putObj(bucket *s3.Bucket, key string, content []byte) ([md5.Size]byte, error) {
 	md5Sum := md5.Sum(content)
 	md5B64 := base64.StdEncoding.EncodeToString(md5Sum[:])
 	fmt.Printf("MD5 is %s\n", md5B64)
@@ -73,9 +74,17 @@ func putObj(bucket *s3.Bucket, key string, content []byte) error {
 		"Content-Type": {"application/octet-stream"},
 		"Content-MD5":  {md5B64},
 	}
-	return bucket.PutHeader(key, content, headers, s3.Private)
+	return md5Sum, bucket.PutHeader(key, content, headers, s3.Private)
 }
-func verify(bucket *s3.Bucket, key string) error {
+func verify(bucket *s3.Bucket, key string, md5Sum [md5.Size]byte) error {
+	if content, err := bucket.Get(key); err == nil {
+		gavinNewSum := md5.Sum(content)
+		if !bytes.Equal(md5Sum[:], gavinNewSum[:]) {
+			return errors.New(fmt.Sprintf("Mismatched MD5Sum: %s", base64.StdEncoding.EncodeToString(gavinNewSum[:])))
+		}
+	} else {
+		return err
+	}
 	return nil
 }
 func uploadAndVerify(bucket *s3.Bucket, fname string) error {
@@ -91,7 +100,11 @@ func uploadAndVerify(bucket *s3.Bucket, fname string) error {
 	} else if len(fileContent) == 0 {
 		return errors.New("File content can not be 0")
 	}
-	return putObj(bucket, key, fileContent)
+	if md5Sum, err := putObj(bucket, key, fileContent); err == nil {
+		return verify(bucket, key, md5Sum)
+	} else {
+		return err
+	}
 }
 func connectToS3(access string, secret string) *s3.Bucket {
 	auth := aws.Auth{
