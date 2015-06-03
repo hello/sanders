@@ -79,6 +79,7 @@ func putObj(bucket *s3.Bucket, key string, content []byte) ([md5.Size]byte, erro
 func verify(bucket *s3.Bucket, key string, md5Sum [md5.Size]byte) error {
 	if content, err := bucket.Get(key); err == nil {
 		gavinNewSum := md5.Sum(content)
+		fmt.Printf("Uploaded MD5 is %s\n", base64.StdEncoding.EncodeToString(gavinNewSum[:]))
 		if !bytes.Equal(md5Sum[:], gavinNewSum[:]) {
 			return errors.New(fmt.Sprintf("Mismatched MD5Sum: %s", base64.StdEncoding.EncodeToString(gavinNewSum[:])))
 		}
