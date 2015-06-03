@@ -31,6 +31,11 @@ func init() {
 				Ui: cui,
 			}, nil
 		},
+		"list": func() (cli.Command, error) {
+			return &command.ListS3Command{
+				Ui: cui,
+			}, nil
+		},
 		"csv": func() (cli.Command, error) {
 			return &command.CSVCommand{
 				Ui:    cui,
