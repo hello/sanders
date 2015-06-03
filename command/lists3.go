@@ -65,7 +65,7 @@ func (c *ListS3Command) Synopsis() string {
 
 func parseKeyType(fname string) (string, error) {
 	if strings.EqualFold("pill", fname) {
-		return "zip/", nil
+		return "zip/2015", nil
 	} else {
 		return "unknown", errors.New("Invalid Object")
 	}
