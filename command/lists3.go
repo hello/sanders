@@ -20,25 +20,23 @@ func (c *ListS3Command) Help() string {
 func (c *ListS3Command) Run(args []string) int {
 	c.Ui.Info(fmt.Sprintf("Establishing connection with key %s", string(AwsSecretKey)[:2]))
 	bucket := connectToS3(AwsAccessKey, AwsSecretKey)
-	var key string
 	if 0 == len(args) {
 		c.Ui.Error(fmt.Sprintf("Please provide a valid bin type (pill)"))
 		c.Ui.Error(fmt.Sprintf("Fail"))
 		return 1
 	} else if ktype, err := parseKeyType(args[0]); err != nil {
-		c.Ui.Error(fmt.Sprintf("Invalid Key: %s", key))
+		c.Ui.Error(fmt.Sprintf("Invalid Key: %s", ktype))
 		c.Ui.Error(fmt.Sprintf("Fail"))
 		return 1
 	} else {
-		key = ktype
 		listCount := 3
 		if len(args) >= 2 {
 			if count, err := strconv.Atoi(args[1]); err == nil {
 				listCount = count
 			}
 		}
-		c.Ui.Info(fmt.Sprintf("Viewing %s with history count = %d", key, listCount))
-		if resp, err := bucket.List(key, "/", "", 1000); err == nil {
+		c.Ui.Info(fmt.Sprintf("Viewing %s with history count = %d", ktype, listCount))
+		if resp, err := bucket.List(ktype, "/", "", 1000); err == nil {
 			start := 0
 			contentSize := len(resp.Contents)
 			if contentSize >= listCount {
