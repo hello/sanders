@@ -102,14 +102,19 @@ func uploadAndVerify(bucket *s3.Bucket, fname string, retryMax int) error {
 		return errors.New("File content can not be 0")
 	}
 	for retries := 0; retries < retryMax; retries++ {
+		var res error
 		if md5Sum, err := putObj(bucket, key, fileContent); err == nil {
 			if err := verify(bucket, key, md5Sum); err == nil {
-				break
+				return nil
+			} else {
+				res = err
 			}
+		} else {
+			res = err
 		}
-		fmt.Printf("Retry: %d, %s\n", retries+1, err)
+		fmt.Printf("Retry: %d, %s\n", retries+1, res)
 	}
-	return err
+	return errors.New("Unable to Upload")
 
 }
 func connectToS3(access string, secret string) *s3.Bucket {
