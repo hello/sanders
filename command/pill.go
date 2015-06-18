@@ -35,7 +35,7 @@ func (c *PillCommand) Run(args []string) int {
 		return 1
 	} else {
 		for _, fname := range args {
-			if err := uploadAndVerify(bucket, fname); err == nil {
+			if err := uploadAndVerify(bucket, fname, 3); err == nil {
 				c.Ui.Info(fmt.Sprintf("Uploaded %s", fname))
 			} else {
 				c.Ui.Error(fmt.Sprintf("Uploading %s failed. Error: %s.", fname, err))
@@ -88,7 +88,7 @@ func verify(bucket *s3.Bucket, key string, md5Sum [md5.Size]byte) error {
 	}
 	return nil
 }
-func uploadAndVerify(bucket *s3.Bucket, fname string) error {
+func uploadAndVerify(bucket *s3.Bucket, fname string, retryMax int) error {
 	fullName, _ := filepath.Abs(fname)
 	t, err := determineKeyType(fullName)
 	if err != nil {
@@ -101,11 +101,16 @@ func uploadAndVerify(bucket *s3.Bucket, fname string) error {
 	} else if len(fileContent) == 0 {
 		return errors.New("File content can not be 0")
 	}
-	if md5Sum, err := putObj(bucket, key, fileContent); err == nil {
-		return verify(bucket, key, md5Sum)
-	} else {
-		return err
+	for retries := 0; retries < retryMax; retries++ {
+		if md5Sum, err := putObj(bucket, key, fileContent); err == nil {
+			if err := verify(bucket, key, md5Sum); err == nil {
+				break
+			}
+		}
+		fmt.Printf("Retry: %d, %s\n", retries+1, err)
 	}
+	return err
+
 }
 func connectToS3(access string, secret string) *s3.Bucket {
 	auth := aws.Auth{
