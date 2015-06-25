@@ -44,7 +44,7 @@ Plan:
 
 	desiredCapacityByLCName := make(map[string]int64)
 	desiredCapacityByLCName["suripu-app"] = int64(2)
-	desiredCapacityByLCName["suripu-service"] = int64(2)
+	desiredCapacityByLCName["suripu-service"] = int64(3)
 	desiredCapacityByLCName["suripu-workers"] = int64(1)
 
 	possibleLCs := make([]*string, 3)
