@@ -12,7 +12,7 @@ Workflow after AMI has been built for the version you want to deploy:
 
 To deploy the app to our `canary` environment, run the command `sanders canary`. It will kill the current instance and spin up the new version.
 
-**Important**: `sanders canary` is **NOT** HA, there will be downtime between killing the old instance and spinning up a new one.
+**:warning: Important**: `sanders canary` is **NOT** HA, there will be downtime between killing the old instance and spinning up a new one. 
 
 ## Sanders (jabil branch) for Jabil
 
