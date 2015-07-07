@@ -37,23 +37,23 @@ func init() {
 				Ui: cui,
 			}, nil
 		},
-		// "build": func() (cli.Command, error) {
-		// 	return &command.BuildCommand{
-		// 		Ui: cui,
-		// 	}, nil
-		// },
 		"deploy": func() (cli.Command, error) {
 			return &command.DeployCommand{
 				Ui: cui,
 			}, nil
 		},
-		// "asg": func() (cli.Command, error) {
-		// 	return &command.ASGCommand{
-		// 		Ui: cui,
-		// 	}, nil
-		// },
 		"hosts": func() (cli.Command, error) {
 			return &command.HostsCommand{
+				Ui: cui,
+			}, nil
+		},
+		"canary": func() (cli.Command, error) {
+			return &command.CanaryCommand{
+				Ui: cui,
+			}, nil
+		},
+		"confirm": func() (cli.Command, error) {
+			return &command.ConfirmCommand{
 				Ui: cui,
 			}, nil
 		},

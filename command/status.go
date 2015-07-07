@@ -28,7 +28,7 @@ func (c *StatusCommand) Run(args []string) int {
 	service := elb.New(config)
 	ec2Service := ec2.New(config)
 
-	for _, elbName := range []string{"suripu-service-prod", "suripu-app-prod"} {
+	for _, elbName := range []string{"suripu-service-prod", "suripu-app-prod", "suripu-app-canary"} {
 		c.Ui.Info(fmt.Sprintf("ELB: %s", elbName))
 
 		req := &elb.DescribeInstanceHealthInput{

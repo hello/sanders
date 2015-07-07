@@ -9,17 +9,16 @@ import (
 	"strings"
 )
 
-type DeployCommand struct {
+type ConfirmCommand struct {
 	Ui cli.ColoredUi
 }
 
-func (c *DeployCommand) Help() string {
-	helpText := `Usage: hello deploy`
+func (c *ConfirmCommand) Help() string {
+	helpText := `Usage: hello up`
 	return strings.TrimSpace(helpText)
 }
 
-func (c *DeployCommand) Run(args []string) int {
-
+func (c *ConfirmCommand) Run(args []string) int {
 	plan := `
 
 Plan:
@@ -33,9 +32,12 @@ Plan:
 	}
 	service := autoscaling.New(config)
 
-	desiredCapacity := int64(1)
+	desiredCapacityByLCName := make(map[string]int64)
 
-	version, err := c.Ui.Ask("Which version do you want to deploy (ex 8.8.8): ")
+	desiredCapacityByLCName["suripu-app"] = int64(2)
+	desiredCapacityByLCName["suripu-service"] = int64(4)
+
+	version, err := c.Ui.Ask("Which version do you want to confirm (ex 8.8.8): ")
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error reading version #: %s", err))
 		return 1
@@ -43,8 +45,8 @@ Plan:
 
 	c.Ui.Info(fmt.Sprintf("--> : %s", version))
 
-	possibleLCs := make([]*string, 3)
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
+	possibleLCs := make([]*string, 2)
+	apps := []string{"suripu-app", "suripu-service"}
 
 	for idx, appName := range apps {
 		str := fmt.Sprintf("%s-prod-%s", appName, version)
@@ -104,12 +106,18 @@ Plan:
 		return 1
 	}
 
+	desiredCapacity, found := desiredCapacityByLCName[parts[0]]
+	if !found {
+		c.Ui.Error(fmt.Sprintf("%s not found. Aborting", parts[0]))
+		return 1
+	}
+
 	for _, asg := range describeASGResp.AutoScalingGroups {
 		asgName := *asg.AutoScalingGroupName
-		if *asg.DesiredCapacity == 0 {
-			// c.Ui.Info(fmt.Sprintf("Update ASG %s with launch configuration:", asgName))
+		if *asg.LaunchConfigurationName == lcName {
 
-			c.Ui.Warn(fmt.Sprintf(plan, asgName, lcName, desiredCapacity))
+			c.Ui.Warn(fmt.Sprintf("--- # of servers to deploy: %d", *asg.DesiredCapacity))
+			c.Ui.Info(fmt.Sprintf("+++ # of servers to deploy: %d", desiredCapacity))
 
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s", err))
@@ -144,17 +152,16 @@ Plan:
 				return 1
 			}
 
-			c.Ui.Info("Update autoscaling group request acknowledged")
+			// fmt.Println(*updateReq.AutoScalingGroupName)
 
-			continue
+			c.Ui.Info("Update autoscaling group request acknowledged")
 		}
-		c.Ui.Warn(fmt.Sprintf("%s ignored because desired capacity is > 0", asgName))
 	}
 
 	c.Ui.Info("Run: `sanders status` to monitor servers being attached to ELB")
 	return 0
 }
 
-func (c *DeployCommand) Synopsis() string {
-	return "deploy a new version of the app to the empty autoscaling group"
+func (c *ConfirmCommand) Synopsis() string {
+	return "confirms the given version is good and increase number of instances"
 }

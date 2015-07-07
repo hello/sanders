@@ -46,6 +46,7 @@ func (c *HostsCommand) Run(args []string) int {
 		two := fmt.Sprintf("%s-prod-green", appName)
 		groupnames = append(groupnames, &one)
 		groupnames = append(groupnames, &two)
+		// groupnames = append(groupnames, "suripu-prdo")
 	}
 
 	req := &autoscaling.DescribeAutoScalingGroupsInput{
