@@ -51,23 +51,37 @@ func (c *StatusCommand) Run(args []string) int {
 			InstanceIDs: instanceIds,
 		}
 
-		resp, err := ec2Service.DescribeInstances(instanceReq)
-		// instancesResp, err := ecSquare.DescribeInstances(ids, nil)
-		// if err != nil {
-		// 	c.Ui.Error(fmt.Sprintf("Error: %s", err))
-		// 	return 1
-		// }
+		resp, _ := ec2Service.DescribeInstances(instanceReq)
 
 		publicNames := make(map[string]string, 0)
+		amis := make(map[string]string, 0)
+		amisNames := make(map[string]string, 0)
+		amisToFetch := make([]*string, 0)
 		for _, reservation := range resp.Reservations {
 			for _, instance := range reservation.Instances {
-				publicNames[*instance.InstanceID] = *instance.PublicDNSName
+				publicNames[*instance.ImageID] = *instance.PublicDNSName
+				amis[*instance.InstanceID] = *instance.ImageID
+				amisToFetch = append(amisToFetch, instance.ImageID)
 			}
+		}
+
+		amiReq := &ec2.DescribeImagesInput{
+			ImageIDs: amisToFetch,
+		}
+
+		amiResp, _ := ec2Service.DescribeImages(amiReq)
+		for _, ami := range amiResp.Images {
+			amisNames[*ami.ImageID] = *ami.Name
 		}
 
 		for _, state := range lbResp.InstanceStates {
 			res, ok := publicNames[*state.InstanceID]
+			amiId, _ := amis[*state.InstanceID]
+			amiName, _ := amisNames[amiId]
+			parts := strings.SplitAfterN(amiName, "-", 4)
+
 			if *state.State == "InService" {
+				c.Ui.Info(fmt.Sprintf("\tVersion: %s", strings.TrimSuffix(parts[2], "-")))
 				c.Ui.Info(fmt.Sprintf("\tID: %s", *state.InstanceID))
 				c.Ui.Info(fmt.Sprintf("\tState: %s", *state.State))
 				if ok {
