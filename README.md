@@ -5,7 +5,7 @@
 Workflow after AMI has been built for the version you want to deploy:
 
 1. `sanders deploy` deploys **ONE** instance with the version specified.
-2. `sanders confirm` once we have evaluted that the new application is working well. It will deploy **N** instances.
+2. `sanders confirm` once we have verified that the new application is working well, it will deploy **N** instances.
 3. `sanders sunset` to sunset the previous version. Only sunset when all new instances are up and running.
 
 
