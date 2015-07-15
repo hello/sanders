@@ -36,6 +36,7 @@ Plan:
 
 	desiredCapacityByLCName["suripu-app"] = int64(2)
 	desiredCapacityByLCName["suripu-service"] = int64(4)
+	desiredCapacityByLCName["suripu-workers"] = int64(2)
 
 	version, err := c.Ui.Ask("Which version do you want to confirm (ex 8.8.8): ")
 	if err != nil {
@@ -45,8 +46,8 @@ Plan:
 
 	c.Ui.Info(fmt.Sprintf("--> : %s", version))
 
-	possibleLCs := make([]*string, 2)
-	apps := []string{"suripu-app", "suripu-service"}
+	possibleLCs := make([]*string, 3)
+	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
 
 	for idx, appName := range apps {
 		str := fmt.Sprintf("%s-prod-%s", appName, version)
