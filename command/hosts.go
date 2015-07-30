@@ -17,7 +17,7 @@ type HostsCommand struct {
 }
 
 func (c *HostsCommand) Help() string {
-	helpText := `Usage: sanders hosts [-sync]`
+	helpText := `Usage: sanders hosts [-nosync]`
 	return strings.TrimSpace(helpText)
 }
 
@@ -25,7 +25,7 @@ func (c *HostsCommand) Run(args []string) int {
 
 	cmdFlags := flag.NewFlagSet("hosts", flag.ContinueOnError)
 	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }
-	var sync = cmdFlags.Bool("sync", false, "syncs dsh groupnames")
+	var sync = cmdFlags.Bool("nosync", false, "disable syncing dsh groupnames")
 	if err := cmdFlags.Parse(args); err != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
 		return 1
