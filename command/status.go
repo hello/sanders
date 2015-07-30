@@ -59,7 +59,7 @@ func (c *StatusCommand) Run(args []string) int {
 		amisToFetch := make([]*string, 0)
 		for _, reservation := range resp.Reservations {
 			for _, instance := range reservation.Instances {
-				publicNames[*instance.ImageID] = *instance.PublicDNSName
+				publicNames[*instance.InstanceID] = *instance.PublicDNSName
 				amis[*instance.InstanceID] = *instance.ImageID
 				amisToFetch = append(amisToFetch, instance.ImageID)
 			}
