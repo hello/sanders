@@ -25,7 +25,7 @@ func (c *HostsCommand) Run(args []string) int {
 
 	cmdFlags := flag.NewFlagSet("hosts", flag.ContinueOnError)
 	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }
-	var sync = cmdFlags.Bool("nosync", false, "disable syncing dsh groupnames")
+	var nosync = cmdFlags.Bool("nosync", false, "disable syncing dsh groupnames")
 	if err := cmdFlags.Parse(args); err != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
 		return 1
@@ -86,7 +86,7 @@ func (c *HostsCommand) Run(args []string) int {
 				c.Ui.Error(fmt.Sprintf("\t%s", *instance.PublicDNSName))
 			}
 		}
-		if *sync {
+		if !*nosync {
 			homedir := os.Getenv("HOME")
 			filePath := homedir + "/.dsh/group/" + *asg.AutoScalingGroupName
 			err = ioutil.WriteFile(filePath, []byte(content), 0644)
