@@ -3,9 +3,9 @@ package command
 import (
 	"flag"
 	"fmt"
-	"github.com/awslabs/aws-sdk-go/aws"
-	"github.com/awslabs/aws-sdk-go/service/autoscaling"
-	"github.com/awslabs/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/mitchellh/cli"
 	"io/ioutil"
 	"os"
@@ -34,7 +34,7 @@ func (c *HostsCommand) Run(args []string) int {
 	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
 
 	config := &aws.Config{
-		Region: "us-east-1",
+		Region: aws.String("us-east-1"),
 	}
 
 	service := autoscaling.New(config)
@@ -59,7 +59,7 @@ func (c *HostsCommand) Run(args []string) int {
 		instanceIds := make([]*string, 0)
 
 		for _, instance := range asg.Instances {
-			instanceIds = append(instanceIds, instance.InstanceID)
+			instanceIds = append(instanceIds, instance.InstanceId)
 		}
 
 		if len(instanceIds) == 0 {
@@ -70,7 +70,7 @@ func (c *HostsCommand) Run(args []string) int {
 		c.Ui.Info(fmt.Sprintf("ASG: %s [%s]", *asg.AutoScalingGroupName, *asg.LaunchConfigurationName))
 
 		describeReq := &ec2.DescribeInstancesInput{
-			InstanceIDs: instanceIds,
+			InstanceIds: instanceIds,
 		}
 
 		describeResp, err := ec2Service.DescribeInstances(describeReq)
@@ -82,8 +82,8 @@ func (c *HostsCommand) Run(args []string) int {
 		content := ""
 		for _, reservation := range describeResp.Reservations {
 			for _, instance := range reservation.Instances {
-				content += fmt.Sprintf("%s\n", *instance.PublicDNSName)
-				c.Ui.Error(fmt.Sprintf("\t%s", *instance.PublicDNSName))
+				content += fmt.Sprintf("%s\n", *instance.PublicDnsName)
+				c.Ui.Error(fmt.Sprintf("\t%s", *instance.PublicDnsName))
 			}
 		}
 		if !*nosync {

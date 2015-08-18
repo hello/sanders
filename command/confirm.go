@@ -2,8 +2,8 @@ package command
 
 import (
 	"fmt"
-	"github.com/awslabs/aws-sdk-go/aws"
-	"github.com/awslabs/aws-sdk-go/service/autoscaling"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
 	"strconv"
 	"strings"
@@ -28,7 +28,7 @@ Plan:
 
 `
 	config := &aws.Config{
-		Region: "us-east-1",
+		Region: aws.String("us-east-1"),
 	}
 	service := autoscaling.New(config)
 

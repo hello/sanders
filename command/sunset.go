@@ -1,8 +1,8 @@
 package command
 
 import (
-	"github.com/awslabs/aws-sdk-go/aws"
-	"github.com/awslabs/aws-sdk-go/service/autoscaling"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
 	// "github.com/mitchellh/packer/packer"
 	"fmt"
@@ -32,7 +32,7 @@ Plan:
 `
 
 	config := &aws.Config{
-		Region: "us-east-1",
+		Region: aws.String("us-east-1"),
 	}
 
 	service := autoscaling.New(config)
@@ -74,7 +74,7 @@ Plan:
 		return 1
 	}
 
-	instancesPerASG := make(map[string]*autoscaling.AutoScalingGroup)
+	instancesPerASG := make(map[string]*autoscaling.Group)
 
 	asgs := make([]string, 0)
 	for _, asg := range describeASGResp.AutoScalingGroups {

@@ -2,9 +2,9 @@ package command
 
 import (
 	"fmt"
-	"github.com/awslabs/aws-sdk-go/aws"
-	"github.com/awslabs/aws-sdk-go/service/ec2"
-	"github.com/awslabs/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/mitchellh/cli"
 	"strings"
 	// "sync"
@@ -22,7 +22,7 @@ func (c *StatusCommand) Help() string {
 func (c *StatusCommand) Run(args []string) int {
 
 	config := &aws.Config{
-		Region: "us-east-1",
+		Region: aws.String("us-east-1"),
 	}
 
 	service := elb.New(config)
@@ -44,11 +44,11 @@ func (c *StatusCommand) Run(args []string) int {
 		instanceIds := make([]*string, 0)
 
 		for _, state := range lbResp.InstanceStates {
-			instanceIds = append(instanceIds, state.InstanceID)
+			instanceIds = append(instanceIds, state.InstanceId)
 		}
 
 		instanceReq := &ec2.DescribeInstancesInput{
-			InstanceIDs: instanceIds,
+			InstanceIds: instanceIds,
 		}
 
 		resp, _ := ec2Service.DescribeInstances(instanceReq)
@@ -59,37 +59,37 @@ func (c *StatusCommand) Run(args []string) int {
 		amisToFetch := make([]*string, 0)
 		for _, reservation := range resp.Reservations {
 			for _, instance := range reservation.Instances {
-				publicNames[*instance.InstanceID] = *instance.PublicDNSName
-				amis[*instance.InstanceID] = *instance.ImageID
-				amisToFetch = append(amisToFetch, instance.ImageID)
+				publicNames[*instance.InstanceId] = *instance.PublicDnsName
+				amis[*instance.InstanceId] = *instance.ImageId
+				amisToFetch = append(amisToFetch, instance.ImageId)
 			}
 		}
 
 		amiReq := &ec2.DescribeImagesInput{
-			ImageIDs: amisToFetch,
+			ImageIds: amisToFetch,
 		}
 
 		amiResp, _ := ec2Service.DescribeImages(amiReq)
 		for _, ami := range amiResp.Images {
-			amisNames[*ami.ImageID] = *ami.Name
+			amisNames[*ami.ImageId] = *ami.Name
 		}
 
 		for _, state := range lbResp.InstanceStates {
-			res, ok := publicNames[*state.InstanceID]
-			amiId, _ := amis[*state.InstanceID]
+			res, ok := publicNames[*state.InstanceId]
+			amiId, _ := amis[*state.InstanceId]
 			amiName, _ := amisNames[amiId]
 			parts := strings.SplitAfterN(amiName, "-", 4)
 
 			if *state.State == "InService" {
 				c.Ui.Info(fmt.Sprintf("\tVersion: %s", strings.TrimSuffix(parts[2], "-")))
-				c.Ui.Info(fmt.Sprintf("\tID: %s", *state.InstanceID))
+				c.Ui.Info(fmt.Sprintf("\tID: %s", *state.InstanceId))
 				c.Ui.Info(fmt.Sprintf("\tState: %s", *state.State))
 				if ok {
 					c.Ui.Info(fmt.Sprintf("\tHostname: %s", res))
 				}
 
 			} else {
-				c.Ui.Error(fmt.Sprintf("\tID: %s", *state.InstanceID))
+				c.Ui.Error(fmt.Sprintf("\tID: %s", *state.InstanceId))
 				c.Ui.Error(fmt.Sprintf("\tReason: %s", *state.ReasonCode))
 				c.Ui.Error(fmt.Sprintf("\tDescription: %s", *state.Description))
 				if ok {
