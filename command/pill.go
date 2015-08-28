@@ -56,7 +56,7 @@ func (c *PillCommand) Synopsis() string {
 func determineKeyType(fname string) (string, error) {
 	p, _ := filepath.Abs(fname)
 	if _, err := os.Stat(p); os.IsNotExist(err) {
-	    return "unknown", errors.New("File doesn't exist")
+		return "unknown", errors.New("File doesn't exist")
 	} else if err == nil {
 		basename := filepath.Base(p)
 		if isPill, pe := filepath.Match(`[pP]ill_*.zip`, basename); pe == nil && isPill {
@@ -71,7 +71,7 @@ func determineKeyType(fname string) (string, error) {
 	}
 	return "unknown", errors.New("Invalid Object")
 }
-func putObj(bucket *s3.Bucket, key string, content []byte, md5B64 string) (error) {
+func putObj(bucket *s3.Bucket, key string, content []byte, md5B64 string) error {
 	headers := map[string][]string{
 		"Content-Type": {"application/octet-stream"},
 		"Content-MD5":  {md5B64},
@@ -96,6 +96,18 @@ func verify(bucket *s3.Bucket, key string, md5Sum [md5.Size]byte) error {
 	}
 	return nil
 }
+func quickVerify(bucket *s3.Bucket, key string, md5Sum string) error {
+	if content, err := bucket.GetKey(key); err == nil {
+		fmt.Printf("Uploaded MD5 is %s\n", content.ETag)
+		if content.ETag != md5Sum {
+			return errors.New(fmt.Sprintf("Mismatched MD5Sum: %s", md5Sum))
+		} else {
+			return nil
+		}
+	} else {
+		return err
+	}
+}
 func uploadAndVerify(bucket *s3.Bucket, fname string, retryMax int, sleepSecs int) error {
 	fullName, _ := filepath.Abs(fname)
 	t, err := determineKeyType(fullName)
@@ -111,17 +123,20 @@ func uploadAndVerify(bucket *s3.Bucket, fname string, retryMax int, sleepSecs in
 	}
 	md5Sum, md5B64 := calcMD5(fileContent)
 	compStr := `"` + hex.EncodeToString(md5Sum[:]) + `"`
-	listResp, err := bucket.List(t + `/`, `/`, "", 1000)
-	for _,key := range listResp.Contents {
+	listResp, err := bucket.List(t+`/`, `/`, "", 1000)
+	if err != nil {
+		return err
+	}
+	for _, key := range listResp.Contents {
 		if compStr == key.ETag {
-			fmt.Printf("File already exists as: %s\n",key.Key)
+			fmt.Printf("File already exists as: %s\n", key.Key)
 			return nil
 		}
 	}
 	for retries := 0; retries < retryMax; retries++ {
 		var res error
 		if err := putObj(bucket, key, fileContent, md5B64); err == nil {
-			if err := verify(bucket, key, md5Sum); err == nil {
+			if err := quickVerify(bucket, key, compStr); err == nil {
 				return nil
 			} else {
 				res = err
@@ -130,12 +145,11 @@ func uploadAndVerify(bucket *s3.Bucket, fname string, retryMax int, sleepSecs in
 			res = err
 		}
 		fmt.Printf("Retry: %d, %s\n", retries+1, res)
-		if retries + 1 != retryMax {
+		if retries+1 != retryMax {
 			time.Sleep(time.Duration(sleepSecs) * time.Second)
 		}
 	}
 	return errors.New("Unable to Upload")
-
 }
 func connectToS3(access string, secret string) *s3.Bucket {
 	auth := aws.Auth{
