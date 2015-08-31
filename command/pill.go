@@ -114,7 +114,10 @@ func uploadAndVerify(bucket *s3.Bucket, fname string, retryMax int, sleepSecs in
 	if err != nil {
 		return err
 	}
-	key := t + `/` + time.Now().UTC().Format("20060102150405") + "-" + filepath.Base(fullName)
+	extension := filepath.Ext(fullName)
+	fileName := filepath.Base(fullName)
+	baseName := strings.TrimSuffix(fileName, extension)
+	key := t + `/` + baseName + "-" + time.Now().UTC().Format("20060102150405") + extension
 	fileContent, err := ioutil.ReadFile(fullName)
 	if err != nil {
 		return err
@@ -123,7 +126,7 @@ func uploadAndVerify(bucket *s3.Bucket, fname string, retryMax int, sleepSecs in
 	}
 	md5Sum, md5B64 := calcMD5(fileContent)
 	compStr := `"` + hex.EncodeToString(md5Sum[:]) + `"`
-	listResp, err := bucket.List(t+`/`, `/`, "", 1000)
+	listResp, err := bucket.List(t+`/`+baseName, `/`, "", 1000)
 	if err != nil {
 		return err
 	}
