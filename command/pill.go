@@ -11,6 +11,8 @@ import (
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/s3"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,9 +99,12 @@ func verify(bucket *s3.Bucket, key string, md5Sum [md5.Size]byte) error {
 	return nil
 }
 func quickVerify(bucket *s3.Bucket, key string, md5Sum string) error {
-	if content, err := bucket.GetKey(key); err == nil {
-		fmt.Printf("Uploaded MD5 is %s\n", content.ETag)
-		if content.ETag != md5Sum {
+	if listResp, err := bucket.List(key, `/`, "", 2); err == nil {
+		if len(listResp.Contents) != 1 {
+			return errors.New(fmt.Sprintf("Verify returned %s keys. Should be 1", len(listResp.Contents)))
+		}
+		fmt.Printf("Uploaded MD5 is %s\n", listResp.Contents[0].ETag)
+		if listResp.Contents[0].ETag != md5Sum {
 			return errors.New(fmt.Sprintf("Mismatched MD5Sum: %s", md5Sum))
 		} else {
 			return nil
@@ -159,6 +164,25 @@ func connectToS3(access string, secret string) *s3.Bucket {
 		AccessKey: access,
 		SecretKey: secret,
 	}
-	connection := s3.New(auth, aws.USEast)
+	connection := createS3WithTimeouts(auth, aws.USEast, 60, 30, 60)
 	return connection.Bucket("hello-jabil")
+}
+func createS3WithTimeouts(auth aws.Auth, region aws.Region, timeout time.Duration, keepAlive time.Duration, tlsTimeout time.Duration) *s3.S3 {
+	return &s3.S3{
+		Auth:   auth,
+		Region: region,
+		HTTPClient: func() *http.Client {
+			t := &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout:   timeout * time.Second,
+					KeepAlive: keepAlive * time.Second,
+				}).Dial,
+				TLSHandshakeTimeout: tlsTimeout * time.Second,
+			}
+			c := &http.Client{
+				Transport: t,
+			}
+			return c
+		},
+	}
 }
