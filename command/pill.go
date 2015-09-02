@@ -159,12 +159,19 @@ func uploadAndVerify(bucket *s3.Bucket, fname string, retryMax int, sleepSecs in
 	}
 	return errors.New("Unable to Upload")
 }
+
+const (
+	Timeout             time.Duration = 60 * time.Second
+	KeepAlive           time.Duration = 30 * time.Second
+	TlsHandShakeTimeout time.Duration = 60 * time.Second
+)
+
 func connectToS3(access string, secret string) *s3.Bucket {
 	auth := aws.Auth{
 		AccessKey: access,
 		SecretKey: secret,
 	}
-	connection := NewS3WithTimeouts(auth, aws.USEast, 60, 30, 60)
+	connection := NewS3WithTimeouts(auth, aws.USEast, Timeout, KeepAlive, TlsHandShakeTimeout)
 	return connection.Bucket("hello-jabil")
 }
 func NewS3WithTimeouts(auth aws.Auth, region aws.Region, timeout time.Duration, keepAlive time.Duration, tlsTimeout time.Duration) *s3.S3 {
@@ -174,10 +181,10 @@ func NewS3WithTimeouts(auth aws.Auth, region aws.Region, timeout time.Duration, 
 		HTTPClient: func() *http.Client {
 			t := &http.Transport{
 				Dial: (&net.Dialer{
-					Timeout:   timeout * time.Second,
-					KeepAlive: keepAlive * time.Second,
+					Timeout:   timeout,
+					KeepAlive: keepAlive,
 				}).Dial,
-				TLSHandshakeTimeout: tlsTimeout * time.Second,
+				TLSHandshakeTimeout: tlsTimeout,
 			}
 			c := &http.Client{
 				Transport: t,
