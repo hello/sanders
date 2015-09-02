@@ -164,10 +164,10 @@ func connectToS3(access string, secret string) *s3.Bucket {
 		AccessKey: access,
 		SecretKey: secret,
 	}
-	connection := createS3WithTimeouts(auth, aws.USEast, 60, 30, 60)
+	connection := NewS3WithTimeouts(auth, aws.USEast, 60, 30, 60)
 	return connection.Bucket("hello-jabil")
 }
-func createS3WithTimeouts(auth aws.Auth, region aws.Region, timeout time.Duration, keepAlive time.Duration, tlsTimeout time.Duration) *s3.S3 {
+func NewS3WithTimeouts(auth aws.Auth, region aws.Region, timeout time.Duration, keepAlive time.Duration, tlsTimeout time.Duration) *s3.S3 {
 	return &s3.S3{
 		Auth:   auth,
 		Region: region,
