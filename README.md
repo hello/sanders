@@ -8,7 +8,6 @@ Workflow after AMI has been built for the version you want to deploy:
 2. `sanders confirm` once we have verified that the new application is working well, it will deploy **N** instances.
 3. `sanders sunset` to sunset the previous version. Only sunset when all new instances are up and running.
 
-*Note: since there is only one worker server running, the `sanders confirm` command should not be run on workers*
 
 To deploy the *app* to our `canary` environment, run the command `sanders canary`. It will kill the current instance and spin up the new version.
 
