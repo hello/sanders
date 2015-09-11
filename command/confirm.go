@@ -47,7 +47,7 @@ Plan:
 	c.Ui.Info(fmt.Sprintf("--> : %s", version))
 
 	possibleLCs := make([]*string, 3)
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
+	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "suripu-admin"}
 
 	for idx, appName := range apps {
 		str := fmt.Sprintf("%s-prod-%s", appName, version)

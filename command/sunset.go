@@ -37,7 +37,7 @@ Plan:
 
 	service := autoscaling.New(config)
 
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
+	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "suripu-admin"}
 	c.Ui.Output("Which of the following apps do you want to sunset?\n")
 	for idx, appName := range apps {
 		c.Ui.Info(fmt.Sprintf("[%d] %s", idx, appName))

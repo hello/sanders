@@ -57,6 +57,11 @@ func init() {
 				Ui: cui,
 			}, nil
 		},
+		"create": func() (cli.Command, error) {
+			return &command.CreateCommand{
+				Ui: cui,
+			}, nil
+		},
 	}
 }
 

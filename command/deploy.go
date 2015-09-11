@@ -7,7 +7,20 @@ import (
 	"github.com/mitchellh/cli"
 	"strconv"
 	"strings"
+	"sort"
 )
+
+type ByLCTime []*autoscaling.LaunchConfiguration
+
+func (s ByLCTime) Len() int {
+	return len(s)
+}
+func (s ByLCTime) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s ByLCTime) Less(i, j int) bool {
+	return s[i].CreatedTime.Unix() < s[j].CreatedTime.Unix()
+}
 
 type DeployCommand struct {
 	Ui cli.ColoredUi
@@ -35,62 +48,76 @@ Plan:
 
 	desiredCapacity := int64(1)
 
-	version, err := c.Ui.Ask("Which version do you want to deploy (ex 8.8.8): ")
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error reading version #: %s", err))
+	c.Ui.Output("Which app would you like to deploy?")
+
+	suripuApps := []suripuApp{
+		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app"},
+		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service"},
+		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers"},
+		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin"},
+	}
+
+	for idx, app := range suripuApps {
+		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
+	}
+
+	appSel, err := c.Ui.Ask("Select an app #: ")
+	appIdx, _ := strconv.Atoi(appSel)
+
+	if err != nil || appIdx >= len(suripuApps) {
+		c.Ui.Error(fmt.Sprintf("Incorrect app selection: %s\n", err))
 		return 1
 	}
 
-	c.Ui.Info(fmt.Sprintf("--> : %s", version))
-
-	possibleLCs := make([]*string, 3)
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
-
-	for idx, appName := range apps {
-		str := fmt.Sprintf("%s-prod-%s", appName, version)
-		possibleLCs[idx] = &str
+	lcParams := &autoscaling.DescribeLaunchConfigurationsInput{
+		MaxRecords: aws.Int64(100),
 	}
-
-	max := int64(3)
-	describeLCReq := &autoscaling.DescribeLaunchConfigurationsInput{
-		LaunchConfigurationNames: possibleLCs,
-		MaxRecords:               &max,
-	}
-
-	lcsResp, err := service.DescribeLaunchConfigurations(describeLCReq)
+	lcsResp, err := service.DescribeLaunchConfigurations(lcParams)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
 		return 1
 	}
 
 	if len(lcsResp.LaunchConfigurations) == 0 {
-		c.Ui.Error(fmt.Sprintf("No launch configuration found for version: %s", version))
+		c.Ui.Error(fmt.Sprintf("No launch configuration found for app: %s", suripuApps[appIdx].name))
 		return 1
 	}
 
 	c.Ui.Output("")
-	c.Ui.Output(fmt.Sprintf("Found the following matching Launch Configurations for version: %s:\n", version))
-	for idx, stuff := range lcsResp.LaunchConfigurations {
-		c.Ui.Info(fmt.Sprintf("[%d] %s", idx, *stuff.LaunchConfigurationName))
+
+	appPossibleLCs := make([]*autoscaling.LaunchConfiguration, 0)
+
+	for _, stuff := range lcsResp.LaunchConfigurations {
+		if strings.HasPrefix(*stuff.LaunchConfigurationName, suripuApps[appIdx].name) {
+			appPossibleLCs = append(appPossibleLCs, stuff)
+		}
+	}
+
+	c.Ui.Info("Available Launch Configurations")
+	c.Ui.Info(" #\tName:                               \tCreated At:")
+	c.Ui.Info("---|---------------------------------------|---------------")
+	sort.Sort(sort.Reverse(ByLCTime(appPossibleLCs)))
+	for lcIdx, LC := range appPossibleLCs {
+		c.Ui.Info(fmt.Sprintf("[%d]\t%-36s\t%s", lcIdx, *LC.LaunchConfigurationName, LC.CreatedTime.String()))
 	}
 
 	c.Ui.Output("")
-	app, err := c.Ui.Ask("Launch configuration (LC) #: ")
-	appIdx, _ := strconv.Atoi(app)
+	lc, err := c.Ui.Ask("Select a launch configuration (LC) #: ")
+	lcNum, _ := strconv.Atoi(lc)
 
-	if err != nil || appIdx >= len(lcsResp.LaunchConfigurations) {
+	if err != nil || lcNum >= len(appPossibleLCs) {
 		c.Ui.Error(fmt.Sprintf("Error reading app #: %s", err))
 		return 1
 	}
 
-	lcName := *lcsResp.LaunchConfigurations[appIdx].LaunchConfigurationName
+	lcName := *appPossibleLCs[lcNum].LaunchConfigurationName
 	c.Ui.Info(fmt.Sprintf("--> proceeding with LC : %s", lcName))
 
-	parts := strings.Split(lcName, "-prod-")
+	appName := suripuApps[appIdx].name
 
 	groupnames := make([]*string, 2)
-	one := fmt.Sprintf("%s-prod", parts[0])
-	two := fmt.Sprintf("%s-prod-green", parts[0])
+	one := fmt.Sprintf("%s-prod", appName)
+	two := fmt.Sprintf("%s-prod-green", appName)
 	groupnames[0] = &one
 	groupnames[1] = &two
 
@@ -106,7 +133,7 @@ Plan:
 
 	for _, asg := range describeASGResp.AutoScalingGroups {
 		asgName := *asg.AutoScalingGroupName
-		if *asg.DesiredCapacity == 0 {
+		if *asg.DesiredCapacity == suripuApps[appIdx].targetDesiredCapacity {
 			// c.Ui.Info(fmt.Sprintf("Update ASG %s with launch configuration:", asgName))
 
 			c.Ui.Warn(fmt.Sprintf(plan, asgName, lcName, desiredCapacity))
