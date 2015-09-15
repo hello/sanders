@@ -51,10 +51,10 @@ Plan:
 	c.Ui.Output("Which app would you like to deploy?")
 
 	suripuApps := []suripuApp{
-		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app"},
-		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service"},
-		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers"},
-		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin"},
+		suripuApp{name: "suripu-app"},
+		suripuApp{name: "suripu-service"},
+		suripuApp{name: "suripu-workers"},
+		suripuApp{name: "suripu-admin"},
 	}
 
 	for idx, app := range suripuApps {
@@ -93,12 +93,14 @@ Plan:
 		}
 	}
 
-	c.Ui.Info("Available Launch Configurations")
+	c.Ui.Info("Latest 5 Launch Configurations")
 	c.Ui.Info(" #\tName:                               \tCreated At:")
 	c.Ui.Info("---|---------------------------------------|---------------")
 	sort.Sort(sort.Reverse(ByLCTime(appPossibleLCs)))
-	for lcIdx, LC := range appPossibleLCs {
-		c.Ui.Info(fmt.Sprintf("[%d]\t%-36s\t%s", lcIdx, *LC.LaunchConfigurationName, LC.CreatedTime.String()))
+
+	numLCs := Min(len(appPossibleLCs), 5)
+	for lcIdx := 0; lcIdx < numLCs; lcIdx++ {
+		c.Ui.Info(fmt.Sprintf("[%d]\t%-36s\t%s", lcIdx, *appPossibleLCs[lcIdx].LaunchConfigurationName, appPossibleLCs[lcIdx].CreatedTime.String()))
 	}
 
 	c.Ui.Output("")
@@ -133,8 +135,8 @@ Plan:
 
 	for _, asg := range describeASGResp.AutoScalingGroups {
 		asgName := *asg.AutoScalingGroupName
-		if *asg.DesiredCapacity == suripuApps[appIdx].targetDesiredCapacity {
-			// c.Ui.Info(fmt.Sprintf("Update ASG %s with launch configuration:", asgName))
+		if *asg.DesiredCapacity == 0 {
+			c.Ui.Info(fmt.Sprintf("Update ASG %s with launch configuration:", asgName))
 
 			c.Ui.Warn(fmt.Sprintf(plan, asgName, lcName, desiredCapacity))
 
@@ -155,6 +157,10 @@ Plan:
 			}
 
 			maxSize := desiredCapacity * 2
+			if suripuApps[appIdx].targetDesiredCapacity == 1 {
+				desiredCapacity = desiredCapacity + 1
+			}
+
 			updateReq := &autoscaling.UpdateAutoScalingGroupInput{
 				DesiredCapacity:         &desiredCapacity,
 				AutoScalingGroupName:    &asgName,
@@ -172,6 +178,28 @@ Plan:
 			}
 
 			c.Ui.Info("Update autoscaling group request acknowledged")
+
+			if suripuApps[appIdx].targetDesiredCapacity == 1 {
+				desiredCapacity = desiredCapacity - 1
+
+			updateReq = &autoscaling.UpdateAutoScalingGroupInput{
+				DesiredCapacity:         &desiredCapacity,
+				AutoScalingGroupName:    &asgName,
+				LaunchConfigurationName: &lcName,
+				MinSize:                 &desiredCapacity,
+				MaxSize:                 &maxSize,
+			}
+
+			c.Ui.Info("Executing plan:")
+			c.Ui.Info(fmt.Sprintf(plan, asgName, lcName, *updateReq.DesiredCapacity))
+			_, err = service.UpdateAutoScalingGroup(updateReq)
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("%s", err))
+				return 1
+			}
+
+			c.Ui.Info("Update autoscaling group request acknowledged")
+			}
 
 			continue
 		}
