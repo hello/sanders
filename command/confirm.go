@@ -46,15 +46,15 @@ Plan:
 
 	c.Ui.Info(fmt.Sprintf("--> : %s", version))
 
-	possibleLCs := make([]*string, 3)
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
+	possibleLCs := make([]*string, 4)
+	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "suripu-admin"}
 
 	for idx, appName := range apps {
 		str := fmt.Sprintf("%s-prod-%s", appName, version)
 		possibleLCs[idx] = &str
 	}
 
-	max := int64(3)
+	max := int64(4)
 	describeLCReq := &autoscaling.DescribeLaunchConfigurationsInput{
 		LaunchConfigurationNames: possibleLCs,
 		MaxRecords:               &max,
