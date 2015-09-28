@@ -57,10 +57,12 @@ func (c *StatusCommand) Run(args []string) int {
 		amis := make(map[string]string, 0)
 		amisNames := make(map[string]string, 0)
 		amisToFetch := make([]*string, 0)
+		instanceLaunchTimes := make(map[string]string, 0)
 		for _, reservation := range resp.Reservations {
 			for _, instance := range reservation.Instances {
 				publicNames[*instance.InstanceId] = *instance.PublicDnsName
 				amis[*instance.InstanceId] = *instance.ImageId
+				instanceLaunchTimes[*instance.InstanceId] = fmt.Sprintf("%s", *instance.LaunchTime)
 				amisToFetch = append(amisToFetch, instance.ImageId)
 			}
 		}
@@ -78,12 +80,14 @@ func (c *StatusCommand) Run(args []string) int {
 			res, ok := publicNames[*state.InstanceId]
 			amiId, _ := amis[*state.InstanceId]
 			amiName, _ := amisNames[amiId]
+			launchTime, _ := instanceLaunchTimes[*state.InstanceId]
 			parts := strings.SplitAfterN(amiName, "-", 4)
 
 			if *state.State == "InService" {
 				c.Ui.Info(fmt.Sprintf("\tVersion: %s", strings.TrimSuffix(parts[2], "-")))
 				c.Ui.Info(fmt.Sprintf("\tID: %s", *state.InstanceId))
 				c.Ui.Info(fmt.Sprintf("\tState: %s", *state.State))
+				c.Ui.Info(fmt.Sprintf("\tLaunched: %s", launchTime))
 				if ok {
 					c.Ui.Info(fmt.Sprintf("\tHostname: %s", res))
 				}
@@ -92,6 +96,7 @@ func (c *StatusCommand) Run(args []string) int {
 				c.Ui.Error(fmt.Sprintf("\tID: %s", *state.InstanceId))
 				c.Ui.Error(fmt.Sprintf("\tReason: %s", *state.ReasonCode))
 				c.Ui.Error(fmt.Sprintf("\tDescription: %s", *state.Description))
+				c.Ui.Error(fmt.Sprintf("\tLaunched: %s", launchTime))
 				if ok {
 					c.Ui.Error(fmt.Sprintf("\tHostname: %s", res))
 				}
