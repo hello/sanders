@@ -83,8 +83,13 @@ func (c *StatusCommand) Run(args []string) int {
 			launchTime, _ := instanceLaunchTimes[*state.InstanceId]
 			parts := strings.SplitAfterN(amiName, "-", 4)
 
+			imageVersion := parts[2]
+			if strings.Contains(amiName, "boxfuse") {
+				imageVersion = strings.Split(amiName, "_")[3]
+			}
+
 			if *state.State == "InService" {
-				c.Ui.Info(fmt.Sprintf("\tVersion: %s", strings.TrimSuffix(parts[2], "-")))
+				c.Ui.Info(fmt.Sprintf("\tVersion: %s", strings.TrimSuffix(imageVersion, "-")))
 				c.Ui.Info(fmt.Sprintf("\tID: %s", *state.InstanceId))
 				c.Ui.Info(fmt.Sprintf("\tState: %s", *state.State))
 				c.Ui.Info(fmt.Sprintf("\tLaunched: %s", launchTime))
