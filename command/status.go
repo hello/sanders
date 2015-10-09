@@ -85,7 +85,7 @@ func (c *StatusCommand) Run(args []string) int {
 
 			imageVersion := parts[2]
 			if strings.Contains(amiName, "boxfuse") {
-				imageVersion = strings.Split(parts[0], "_")[3]
+				imageVersion = strings.Split(amiName, "_")[3]
 			}
 
 			if *state.State == "InService" {
