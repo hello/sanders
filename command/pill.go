@@ -24,7 +24,7 @@ type PillCommand struct {
 }
 
 func (c *PillCommand) Help() string {
-	helpText := `Usage: hello upload {Morpheus,Pill,Top}*.zip`
+	helpText := `Usage: hello upload {Morpheus,Pill,Top,TestData}*.zip`
 	return strings.TrimSpace(helpText)
 }
 
@@ -67,6 +67,8 @@ func determineKeyType(fname string) (string, error) {
 			return "morpheus", nil
 		} else if isTop, pe := filepath.Match(`[tT]op_*.zip`, basename); pe == nil && isTop {
 			return "top", nil
+		} else if isData, pe := filepath.Match(`[tT]est[dD]ata_*.zip`, basename); pe == nil && isData {
+			return "testdata", nil
 		} else {
 			return "unknown", errors.New("Unknown file type")
 		}
