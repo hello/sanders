@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
-	"github.com/mitchellh/cli"
+	"github.com/hello/sanders/ui"
 	"strings"
 	"time"
 )
@@ -19,7 +19,7 @@ Plan:
 `
 
 type CanaryCommand struct {
-	Ui cli.ColoredUi
+	Ui ui.ProgressUi
 }
 
 func (c *CanaryCommand) Help() string {
@@ -132,6 +132,22 @@ func (c *CanaryCommand) check(service *autoscaling.AutoScaling, asgName string, 
 	req := &autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: []*string{aws.String(asgName)},
 	}
+
+	symbols := []int{
+		0x1f550,
+		0x1f551,
+		0x1f552,
+		0x1f553,
+		0x1f554,
+		0x1f555,
+		0x1f556,
+		0x1f557,
+		0x1f558,
+		0x1f559,
+		0x1f55a,
+		0x1f55b,
+	}
+	i := 0
 	for {
 		resp, err := service.DescribeAutoScalingGroups(req)
 		if err != nil {
@@ -144,10 +160,17 @@ func (c *CanaryCommand) check(service *autoscaling.AutoScaling, asgName string, 
 		if len(asg.Instances) == 0 {
 			ready <- true
 		}
-		c.Ui.Info("...")
-		time.Sleep(2 * time.Second)
+		offset := i % len(symbols)
+		c.Ui.Progress(fmt.Sprintf(" %c", symbols[offset]))
+		i += 1
+		time.Sleep(1 * time.Second)
+		offset = i % len(symbols)
+		c.Ui.Progress(fmt.Sprintf(" %c", symbols[offset]))
+		i += 1
+		time.Sleep(1 * time.Second)
 	}
 }
+
 func (c *CanaryCommand) Synopsis() string {
 	return "deploy a new version of the app to the empty autoscaling group"
 }

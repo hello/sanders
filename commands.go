@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/hello/sanders/command"
+	"github.com/hello/sanders/ui"
 	"github.com/mitchellh/cli"
 	"os"
 	"os/signal"
@@ -25,6 +26,12 @@ func init() {
 			Reader: os.Stdin,
 		},
 	}
+
+	cpui := ui.ProgressUi{
+		Writer: os.Stdout,
+		Ui:     cui,
+	}
+
 	Commands = map[string]cli.CommandFactory{
 
 		"status": func() (cli.Command, error) {
@@ -49,7 +56,7 @@ func init() {
 		},
 		"canary": func() (cli.Command, error) {
 			return &command.CanaryCommand{
-				Ui: cui,
+				Ui: cpui,
 			}, nil
 		},
 		"confirm": func() (cli.Command, error) {
