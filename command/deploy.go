@@ -72,25 +72,28 @@ Plan:
 	lcParams := &autoscaling.DescribeLaunchConfigurationsInput{
 		MaxRecords: aws.Int64(100),
 	}
-	lcsResp, err := service.DescribeLaunchConfigurations(lcParams)
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("%s", err))
-		return 1
-	}
 
-	if len(lcsResp.LaunchConfigurations) == 0 {
-		c.Ui.Error(fmt.Sprintf("No launch configuration found for app: %s", suripuApps[appIdx].name))
-		return 1
-	}
-
-	c.Ui.Output("")
-
+	pageNum := 0
 	appPossibleLCs := make([]*autoscaling.LaunchConfiguration, 0)
 
-	for _, stuff := range lcsResp.LaunchConfigurations {
-		if strings.HasPrefix(*stuff.LaunchConfigurationName, suripuApps[appIdx].name) {
-			appPossibleLCs = append(appPossibleLCs, stuff)
+	pageErr := service.DescribeLaunchConfigurationsPages(lcParams, func(page *autoscaling.DescribeLaunchConfigurationsOutput, lastPage bool) bool {
+		pageNum++
+		if len(page.LaunchConfigurations) == 0 {
+			c.Ui.Error(fmt.Sprintf("No launch configuration found for app: %s", suripuApps[appIdx].name))
+			return false
 		}
+
+		for _, stuff := range page.LaunchConfigurations {
+			if strings.HasPrefix(*stuff.LaunchConfigurationName, suripuApps[appIdx].name) {
+				appPossibleLCs = append(appPossibleLCs, stuff)
+			}
+		}
+		return pageNum <= 2 //Allow for 200 possible LCs
+	})
+
+	if pageErr != nil {
+		c.Ui.Error(fmt.Sprintf("%s", err))
+		return 1
 	}
 
 	c.Ui.Info("Latest 5 Launch Configurations")
