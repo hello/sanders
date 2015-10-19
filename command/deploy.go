@@ -5,9 +5,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
+	"sort"
 	"strconv"
 	"strings"
-	"sort"
 )
 
 type ByLCTime []*autoscaling.LaunchConfiguration
@@ -185,23 +185,23 @@ Plan:
 			if suripuApps[appIdx].targetDesiredCapacity == 1 {
 				desiredCapacity = desiredCapacity - 1
 
-			updateReq = &autoscaling.UpdateAutoScalingGroupInput{
-				DesiredCapacity:         &desiredCapacity,
-				AutoScalingGroupName:    &asgName,
-				LaunchConfigurationName: &lcName,
-				MinSize:                 &desiredCapacity,
-				MaxSize:                 &maxSize,
-			}
+				updateReq = &autoscaling.UpdateAutoScalingGroupInput{
+					DesiredCapacity:         &desiredCapacity,
+					AutoScalingGroupName:    &asgName,
+					LaunchConfigurationName: &lcName,
+					MinSize:                 &desiredCapacity,
+					MaxSize:                 &maxSize,
+				}
 
-			c.Ui.Info("Executing plan:")
-			c.Ui.Info(fmt.Sprintf(plan, asgName, lcName, *updateReq.DesiredCapacity))
-			_, err = service.UpdateAutoScalingGroup(updateReq)
-			if err != nil {
-				c.Ui.Error(fmt.Sprintf("%s", err))
-				return 1
-			}
+				c.Ui.Info("Executing plan:")
+				c.Ui.Info(fmt.Sprintf(plan, asgName, lcName, *updateReq.DesiredCapacity))
+				_, err = service.UpdateAutoScalingGroup(updateReq)
+				if err != nil {
+					c.Ui.Error(fmt.Sprintf("%s", err))
+					return 1
+				}
 
-			c.Ui.Info("Update autoscaling group request acknowledged")
+				c.Ui.Info("Update autoscaling group request acknowledged")
 			}
 
 			continue

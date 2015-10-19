@@ -97,15 +97,26 @@ func (c *StatusCommand) Run(args []string) int {
 					c.Ui.Info(fmt.Sprintf("\tHostname: %s", res))
 				}
 
+			} else if *state.ReasonCode == "Instance is in pending state" {
+				c.Ui.Warn(fmt.Sprintf("\tVersion: %s", strings.TrimSuffix(imageVersion, "-")))
+				c.Ui.Warn(fmt.Sprintf("\tID: %s", *state.InstanceId))
+				c.Ui.Warn(fmt.Sprintf("\tState: %s", *state.State))
+				c.Ui.Warn(fmt.Sprintf("\tReason: %s", *state.ReasonCode))
+				c.Ui.Warn(fmt.Sprintf("\tDescription: %s", *state.Description))
+				c.Ui.Warn(fmt.Sprintf("\tLaunched: %s", launchTime))
+				if ok {
+					c.Ui.Warn(fmt.Sprintf("\tHostname: %s", res))
+				}
 			} else {
+				c.Ui.Error(fmt.Sprintf("\tVersion: %s", strings.TrimSuffix(imageVersion, "-")))
 				c.Ui.Error(fmt.Sprintf("\tID: %s", *state.InstanceId))
+				c.Ui.Error(fmt.Sprintf("\tState: %s", *state.State))
 				c.Ui.Error(fmt.Sprintf("\tReason: %s", *state.ReasonCode))
 				c.Ui.Error(fmt.Sprintf("\tDescription: %s", *state.Description))
 				c.Ui.Error(fmt.Sprintf("\tLaunched: %s", launchTime))
 				if ok {
 					c.Ui.Error(fmt.Sprintf("\tHostname: %s", res))
 				}
-
 			}
 			c.Ui.Output("")
 		}
