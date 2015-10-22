@@ -8,7 +8,11 @@ import (
 	"strings"
 	"strconv"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"encoding/base64"
 	"sort"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"bytes"
+	"time"
 )
 
 type suripuApp struct {
@@ -17,6 +21,7 @@ type suripuApp struct {
 	instanceType string
 	instanceProfile string
 	targetDesiredCapacity int64 //This is the desired capacity of the asg targeted for deployment
+	usesPacker bool
 }
 
 type ByImageTime []*ec2.Image
@@ -29,6 +34,18 @@ func (s ByImageTime) Swap(i, j int) {
 }
 func (s ByImageTime) Less(i, j int) bool {
 	return *s[i].CreationDate < *s[j].CreationDate
+}
+
+type ByObjectLastModified []*s3.Object
+
+func (s ByObjectLastModified) Len() int {
+	return len(s)
+}
+func (s ByObjectLastModified) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s ByObjectLastModified) Less(i, j int) bool {
+	return s[i].LastModified.Unix() < s[j].LastModified.Unix()
 }
 
 type CreateCommand struct {
@@ -45,15 +62,16 @@ func (c *CreateCommand) Run(args []string) int {
 		Region: aws.String("us-east-1"),
 	}
 	asgService := autoscaling.New(config)
+	s3Service := s3.New(config)
 	ec2Service := ec2.New(config)
 
 	c.Ui.Output("Which app are we building for?")
 
 	suripuApps := []suripuApp{
-		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app"},
-		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service"},
-		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers"},
-		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin"},
+		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app", usesPacker: true},
+		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service", usesPacker: true},
+		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers", usesPacker: true},
+		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin", usesPacker: false},
 	}
 
 	for idx, app := range suripuApps {
@@ -93,74 +111,20 @@ func (c *CreateCommand) Run(args []string) int {
 	currentLCCount := len(descLCs.LaunchConfigurations)
 	c.Ui.Info(fmt.Sprintf("Current Launch Config Capacity: %d/%d", currentLCCount, maxLCs))
 
-	//Grab latest 5 boxfuse-created AMIs
-	amiTagName := fmt.Sprintf("timbart/%s", strings.Replace(selectedApp.name, "-", "", -1))
-
-	ec2Params := &ec2.DescribeImagesInput{
-		DryRun: aws.Bool(false),
-		ExecutableUsers: []*string{
-			aws.String("self"), // Required
-			// More values...
-		},
-		Filters: []*ec2.Filter{
-			{ // Required
-				Name: aws.String("tag-value"),
-				Values: []*string{
-					aws.String(amiTagName), // Required
-					// More values...
-				},
-			},
-			{ // Required
-				Name: aws.String("tag-key"),
-				Values: []*string{
-					aws.String("boxfuse:app"), // Required
-					// More values...
-				},
-			},
-		},
-	}
-	resp, err := ec2Service.DescribeImages(ec2Params)
-
-	if err != nil {
-		c.Ui.Error(fmt.Sprintln(err.Error()))
-		return 1
-	}
-
 	amiId := ""
 	amiName := ""
 	amiVersion := ""
+	userData := ""
 
-	if len(resp.Images) > 0 {
-	sort.Sort(sort.Reverse(ByImageTime(resp.Images)))
 
-	c.Ui.Output("Which AMI should be used?")
-	numImages := Min(len(resp.Images), 5)
-	for idx := 0; idx < numImages; idx++ {
-		c.Ui.Output(fmt.Sprintf("[%d]\t%s\t%s", idx, *resp.Images[idx].Name, *resp.Images[idx].CreationDate))
-	}
-
-	ami, err := c.Ui.Ask("Select an AMI #: ")
-	amiIdx, _ := strconv.Atoi(ami)
-
-	if err != nil || amiIdx >= len(resp.Images) {
-		c.Ui.Error(fmt.Sprintf("Incorrect AMI selection: %s\n", err))
-		return 1
-	}
-
-	amiName = *resp.Images[amiIdx].Name
-	amiId = *resp.Images[amiIdx].ImageId
-	//Parse out version number
-	amiNameInfo := strings.Split(amiName, "_")
-	amiVersion = amiNameInfo[3]
-
-	} else {
+	if selectedApp.usesPacker {
 		//Allow user to enter version number and search for AMI based on that
-		c.Ui.Warn(fmt.Sprintf("No Boxfuse AMIs found for %s. Proceeding with Packer-created AMI selection.", selectedApp.name))
+		c.Ui.Warn(fmt.Sprintf("%s not yet handled by Packer-free deployment. Proceeding with Packer-created AMI selection.", selectedApp.name))
 
 		ec2ParamsAll := &ec2.DescribeImagesInput{
 			DryRun: aws.Bool(false),
 			Filters: []*ec2.Filter{
-				{ // Required
+				{// Required
 					Name: aws.String("is-public"),
 					Values: []*string{
 						aws.String("false"), // Required
@@ -205,6 +169,86 @@ func (c *CreateCommand) Run(args []string) int {
 		//Parse out version number
 		amiNameInfo := strings.Split(amiName, "-")
 		amiVersion = amiNameInfo[2]
+
+	} else {
+
+		pkgPrefix := fmt.Sprintf("packages/com/hello/suripu/%s/", selectedApp.name)
+
+		c.Ui.Output("")
+		//retrieve package list from S3 for selectedApp
+		s3ListParams := &s3.ListObjectsInput{
+			Bucket:       aws.String("hello-deploy"), // Required
+			//Delimiter:    aws.String("/"),
+			//EncodingType: aws.String("EncodingType"),
+			//Marker:       aws.String("Marker"),
+			MaxKeys:      aws.Int64(100000),
+			Prefix:       aws.String(pkgPrefix),
+		}
+		s3Resp, err := s3Service.ListObjects(s3ListParams)
+
+		if err != nil {
+			c.Ui.Error(fmt.Sprintln(err.Error()))
+			return 0
+		}
+
+		availablePackages := make([]*s3.Object, 0)
+		for _, item := range s3Resp.Contents {
+			if strings.Contains(*item.Key, ".deb") {
+				availablePackages = append(availablePackages, item)
+			}
+		}
+		sort.Sort(sort.Reverse(ByObjectLastModified(availablePackages)))
+
+		versions := make([]string, 0)
+
+
+		c.Ui.Info(fmt.Sprintf("Latest 10 packages available for %s:", selectedApp.name))
+		c.Ui.Info(" #\tVersion:  \tLast Modified:")
+		c.Ui.Info("---|----------------|---------------")
+		numImages := Min(len(availablePackages), 10)
+		for idx := 0; idx < numImages; idx++ {
+			objectKeyChunks := strings.Split(*availablePackages[idx].Key, "/")
+			versionNumber := objectKeyChunks[len(objectKeyChunks) - 2]
+			versions = append(versions, versionNumber)
+			c.Ui.Output(fmt.Sprintf("[%d]\t%s\t\t%s", idx, versionNumber, availablePackages[idx].LastModified.Format(time.UnixDate)))
+		}
+
+		ver, err := c.Ui.Ask("Select a version #: ")
+		verIdx, _ := strconv.Atoi(ver)
+
+		if err != nil || verIdx >= len(availablePackages) {
+			c.Ui.Error(fmt.Sprintf("Incorrect version selection: %s\n", err))
+			return 1
+		}
+
+		amiVersion = versions[verIdx]
+
+		//Get the userdata template from S3 for instance startup using cloud-init
+		s3params := &s3.GetObjectInput{
+			Bucket:                     aws.String("hello-deploy"), // Required
+			Key:                        aws.String("userdata/default_userdata.sh"),  // Required
+		}
+		resp, err := s3Service.GetObject(s3params)
+
+		if err != nil {
+			c.Ui.Error(fmt.Sprintln(err.Error()))
+			return 0
+		}
+
+		// Pretty-print the response data.
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		userData = buf.String()
+
+		//do token replacement
+		userData = strings.Replace(userData, "{app_version}", amiVersion, -1)
+		userData = strings.Replace(userData, "{app_name}", selectedApp.name, -1)
+		userData = strings.Replace(userData, "{default_region}", "us-east-1", -1)
+
+		userData = base64.StdEncoding.EncodeToString([]byte(userData))
+
+		amiName = "a cloud-init deploy based on the AMI: Base-2015-10-20"
+		amiId = "ami-5d83d138"
 	}
 
 	c.Ui.Info(fmt.Sprintf("You selected %s\n", amiName))
@@ -225,7 +269,7 @@ func (c *CreateCommand) Run(args []string) int {
 		SecurityGroups: []*string{
 			aws.String(selectedApp.sg), // Required
 		},
-		//UserData:  aws.String("XmlStringUserData"),
+		UserData:  aws.String(userData),
 	}
 
 	c.Ui.Info(fmt.Sprint("Creating Launch Configuration with the following parameters:"))

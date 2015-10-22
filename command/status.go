@@ -58,12 +58,19 @@ func (c *StatusCommand) Run(args []string) int {
 		amisNames := make(map[string]string, 0)
 		amisToFetch := make([]*string, 0)
 		instanceLaunchTimes := make(map[string]string, 0)
+		lcNames := make(map[string]string, 0)
+
 		for _, reservation := range resp.Reservations {
 			for _, instance := range reservation.Instances {
 				publicNames[*instance.InstanceId] = *instance.PublicDnsName
 				amis[*instance.InstanceId] = *instance.ImageId
 				instanceLaunchTimes[*instance.InstanceId] = fmt.Sprintf("%s", *instance.LaunchTime)
 				amisToFetch = append(amisToFetch, instance.ImageId)
+				for _, tag := range instance.Tags {
+					if strings.Contains(*tag.Key, "LC_Name") {
+						lcNames[*instance.InstanceId] = *tag.Value
+					}
+				}
 			}
 		}
 
@@ -81,11 +88,15 @@ func (c *StatusCommand) Run(args []string) int {
 			amiId, _ := amis[*state.InstanceId]
 			amiName, _ := amisNames[amiId]
 			launchTime, _ := instanceLaunchTimes[*state.InstanceId]
-			parts := strings.SplitAfterN(amiName, "-", 4)
 
-			imageVersion := parts[2]
-			if strings.Contains(amiName, "boxfuse") {
-				imageVersion = strings.Split(amiName, "_")[3]
+			parts := make([]string, 0)
+			imageVersion := ""
+			if lcNames[*state.InstanceId] != "" {
+				parts = strings.SplitAfterN(lcNames[*state.InstanceId], "-", 4)
+				imageVersion = parts[3]
+			} else {
+				parts = strings.SplitAfterN(amiName, "-", 4)
+				imageVersion = parts[2]
 			}
 
 			if *state.State == "InService" {
