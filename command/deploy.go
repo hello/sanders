@@ -160,10 +160,6 @@ Plan:
 			}
 
 			maxSize := desiredCapacity * 2
-			if suripuApps[appIdx].targetDesiredCapacity == 1 {
-				desiredCapacity = desiredCapacity + 1
-			}
-
 			updateReq := &autoscaling.UpdateAutoScalingGroupInput{
 				DesiredCapacity:         &desiredCapacity,
 				AutoScalingGroupName:    &asgName,
@@ -180,30 +176,30 @@ Plan:
 				return 1
 			}
 
-			c.Ui.Info("Update autoscaling group request acknowledged")
+			//Tag the ASG so version number can be passed to instance
+			params := &autoscaling.CreateOrUpdateTagsInput{
+				Tags: []*autoscaling.Tag{ // Required
+					{ // Required
+						Key:               aws.String("LC_Name"), // Required
+						PropagateAtLaunch: aws.Bool(true),
+						ResourceId:        &asgName,
+						ResourceType:      aws.String("auto-scaling-group"),
+						Value:             &lcName,
+					},
+				},
+			}
+			resp, err := service.CreateOrUpdateTags(params)
 
-			if suripuApps[appIdx].targetDesiredCapacity == 1 {
-				desiredCapacity = desiredCapacity - 1
-
-				updateReq = &autoscaling.UpdateAutoScalingGroupInput{
-					DesiredCapacity:         &desiredCapacity,
-					AutoScalingGroupName:    &asgName,
-					LaunchConfigurationName: &lcName,
-					MinSize:                 &desiredCapacity,
-					MaxSize:                 &maxSize,
-				}
-
-				c.Ui.Info("Executing plan:")
-				c.Ui.Info(fmt.Sprintf(plan, asgName, lcName, *updateReq.DesiredCapacity))
-				_, err = service.UpdateAutoScalingGroup(updateReq)
-				if err != nil {
-					c.Ui.Error(fmt.Sprintf("%s", err))
-					return 1
-				}
-
-				c.Ui.Info("Update autoscaling group request acknowledged")
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("%s", err))
+				return 1
 			}
 
+			if resp != nil {
+				c.Ui.Info("Added 'LC_Name' tag to ASG.")
+			}
+
+			c.Ui.Info("Update autoscaling group request acknowledged")
 			continue
 		}
 		c.Ui.Warn(fmt.Sprintf("%s ignored because desired capacity is > 0", asgName))
