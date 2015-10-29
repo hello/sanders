@@ -22,6 +22,7 @@ type suripuApp struct {
 	instanceProfile string
 	targetDesiredCapacity int64 //This is the desired capacity of the asg targeted for deployment
 	usesPacker bool
+	javaVersion int
 }
 
 type ByImageTime []*ec2.Image
@@ -68,10 +69,11 @@ func (c *CreateCommand) Run(args []string) int {
 	c.Ui.Output("Which app are we building for?")
 
 	suripuApps := []suripuApp{
-		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app", usesPacker: true},
-		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service", usesPacker: true},
-		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers", usesPacker: true},
-		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin", usesPacker: false},
+		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app", usesPacker: true, javaVersion: 7},
+		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service", usesPacker: true, javaVersion: 7},
+		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers", usesPacker: true, javaVersion: 7},
+		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin", usesPacker: false, javaVersion: 7},
+		suripuApp{name: "logsindexer", sg: "sg-36f95050", instanceType: "t2.micro", instanceProfile: "logsindexer", usesPacker: false, javaVersion: 8},
 	}
 
 	for idx, app := range suripuApps {
@@ -244,11 +246,12 @@ func (c *CreateCommand) Run(args []string) int {
 		userData = strings.Replace(userData, "{app_version}", amiVersion, -1)
 		userData = strings.Replace(userData, "{app_name}", selectedApp.name, -1)
 		userData = strings.Replace(userData, "{default_region}", "us-east-1", -1)
+		userData = strings.Replace(userData, "{java_version}", strconv.Itoa(selectedApp.javaVersion), -1)
 
 		userData = base64.StdEncoding.EncodeToString([]byte(userData))
 
-		amiName = "a cloud-init deploy based on the AMI: Base-2015-10-20"
-		amiId = "ami-5d83d138"
+		amiName = "a cloud-init deploy based on the AMI: Base-2015-10-28"
+		amiId = "ami-0ac6b760"
 	}
 
 	c.Ui.Info(fmt.Sprintf("You selected %s\n", amiName))
