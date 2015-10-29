@@ -55,6 +55,7 @@ Plan:
 		suripuApp{name: "suripu-service"},
 		suripuApp{name: "suripu-workers"},
 		suripuApp{name: "suripu-admin"},
+		suripuApp{name: "logsindexer"},
 	}
 
 	for idx, app := range suripuApps {
@@ -180,7 +181,7 @@ Plan:
 			params := &autoscaling.CreateOrUpdateTagsInput{
 				Tags: []*autoscaling.Tag{ // Required
 					{ // Required
-						Key:               aws.String("LC_Name"), // Required
+						Key:               aws.String("Launch Configuration"), // Required
 						PropagateAtLaunch: aws.Bool(true),
 						ResourceId:        &asgName,
 						ResourceType:      aws.String("auto-scaling-group"),
@@ -196,7 +197,7 @@ Plan:
 			}
 
 			if resp != nil {
-				c.Ui.Info("Added 'LC_Name' tag to ASG.")
+				c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
 			}
 
 			c.Ui.Info("Update autoscaling group request acknowledged")
