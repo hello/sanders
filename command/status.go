@@ -67,7 +67,7 @@ func (c *StatusCommand) Run(args []string) int {
 				instanceLaunchTimes[*instance.InstanceId] = fmt.Sprintf("%s", *instance.LaunchTime)
 				amisToFetch = append(amisToFetch, instance.ImageId)
 				for _, tag := range instance.Tags {
-					if strings.Contains(*tag.Key, "LC_Name") {
+					if strings.Contains(*tag.Key, "Launch Configuration") {
 						lcNames[*instance.InstanceId] = *tag.Value
 					}
 				}
