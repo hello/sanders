@@ -7,6 +7,7 @@ import (
 	"github.com/hello/sanders/ui"
 	"strings"
 	"time"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 const plan = `
@@ -32,7 +33,7 @@ func (c *CanaryCommand) Run(args []string) int {
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
-	service := autoscaling.New(config)
+	service := autoscaling.New(session.New(), config)
 
 	version, err := c.Ui.Ask("Which version do you want to deploy to canary (ex 8.8.8): ")
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/mitchellh/cli"
 	"strings"
-	// "sync"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type StatusCommand struct {
@@ -25,8 +25,8 @@ func (c *StatusCommand) Run(args []string) int {
 		Region: aws.String("us-east-1"),
 	}
 
-	service := elb.New(config)
-	ec2Service := ec2.New(config)
+	service := elb.New(session.New(), config)
+	ec2Service := ec2.New(session.New(), config)
 
 	for _, elbName := range []string{"suripu-service-prod", "suripu-app-prod", "suripu-app-canary", "suripu-admin-prod"} {
 		c.Ui.Info(fmt.Sprintf("ELB: %s", elbName))

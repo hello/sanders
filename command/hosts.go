@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type HostsCommand struct {
@@ -37,8 +38,8 @@ func (c *HostsCommand) Run(args []string) int {
 		Region: aws.String("us-east-1"),
 	}
 
-	service := autoscaling.New(config)
-	ec2Service := ec2.New(config)
+	service := autoscaling.New(session.New(), config)
+	ec2Service := ec2.New(session.New(), config)
 
 	groupnames := make([]*string, 0)
 	for _, appName := range apps {

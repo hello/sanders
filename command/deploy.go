@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type ByLCTime []*autoscaling.LaunchConfiguration
@@ -44,19 +45,12 @@ Plan:
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
-	service := autoscaling.New(config)
+	service := autoscaling.New(session.New(), config)
 
 	desiredCapacity := int64(1)
 
 	c.Ui.Output("Which app would you like to deploy?")
 
-	suripuApps := []suripuApp{
-		suripuApp{name: "suripu-app"},
-		suripuApp{name: "suripu-service"},
-		suripuApp{name: "suripu-workers"},
-		suripuApp{name: "suripu-admin"},
-		suripuApp{name: "logsindexer"},
-	}
 
 	for idx, app := range suripuApps {
 		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
