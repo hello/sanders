@@ -78,22 +78,22 @@ Plan:
 		instancesPerASG[asgName] = asg
 	}
 
-	anyASGAtDesiredCapacity := false
+	allASGsAtDesiredCapacity := true
 	c.Ui.Output(fmt.Sprintf("ASG matching app : %s\n", suripuApps[appIdx].name))
 	for idx, asgName := range asgs {
 		asg, _ := instancesPerASG[asgName]
 		parts := strings.Split(*asg.LaunchConfigurationName, "-prod-")
 		c.Ui.Info(fmt.Sprintf("[%d] %s (%d instances running %s)", idx, asgName, len(asg.Instances), parts[1]))
-		if len(asg.Instances) >= int(suripuApps[appIdx].targetDesiredCapacity) {
-			anyASGAtDesiredCapacity = true
+		if len(asg.Instances) < int(suripuApps[appIdx].targetDesiredCapacity) {
+			allASGsAtDesiredCapacity = false
 		}
 	}
 
-	if anyASGAtDesiredCapacity == false {
+	if allASGsAtDesiredCapacity == false {
 		c.Ui.Output("")
-		c.Ui.Error(fmt.Sprintf("No ASGs at desired capacity (%d). Ensure you have confirmed your deploy.", suripuApps[appIdx].targetDesiredCapacity))
+		c.Ui.Error(fmt.Sprintf("All ASGs are not at desired capacity (%d). Ensure you have confirmed your deploy.", suripuApps[appIdx].targetDesiredCapacity))
 
-		c.Ui.Warn("Would you like to override and sunset anyway?")
+		c.Ui.Warn("Would you like to override and sunset an ASG anyway?")
 		ok, err := c.Ui.Ask("'ok' if you would like to override, anything else to cancel: ")
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("%s", err))
