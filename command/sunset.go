@@ -90,8 +90,20 @@ Plan:
 	}
 
 	if anyASGAtDesiredCapacity == false {
+		c.Ui.Output("")
 		c.Ui.Error(fmt.Sprintf("No ASGs at desired capacity (%d). Ensure you have confirmed your deploy.", suripuApps[appIdx].targetDesiredCapacity))
-		return 1
+
+		c.Ui.Warn("Would you like to override and sunset anyway?")
+		ok, err := c.Ui.Ask("'ok' if you would like to override, anything else to cancel: ")
+		if err != nil {
+			c.Ui.Error(fmt.Sprintf("%s", err))
+			return 1
+		}
+
+		if ok != "ok" {
+			c.Ui.Warn("Cancelled.")
+			return 0
+		}
 	}
 
 	c.Ui.Output("")
