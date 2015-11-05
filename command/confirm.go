@@ -33,11 +33,6 @@ Plan:
 	}
 	service := autoscaling.New(session.New(), config)
 
-	desiredCapacityByLCName := make(map[string]int64)
-
-	desiredCapacityByLCName["suripu-app"] = int64(2)
-	desiredCapacityByLCName["suripu-service"] = int64(4)
-	desiredCapacityByLCName["suripu-workers"] = int64(2)
 
 	version, err := c.Ui.Ask("Which version do you want to confirm (ex 8.8.8): ")
 	if err != nil {
@@ -47,15 +42,18 @@ Plan:
 
 	c.Ui.Info(fmt.Sprintf("--> : %s", version))
 
-	possibleLCs := make([]*string, 4)
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "suripu-admin"}
+	possibleLCs := make([]*string, len(suripuApps))
 
-	for idx, appName := range apps {
-		str := fmt.Sprintf("%s-prod-%s", appName, version)
+	var appNameMap map[string]suripuApp
+	appNameMap = make(map[string]suripuApp)
+
+	for idx, app := range suripuApps {
+		str := fmt.Sprintf("%s-prod-%s", app.name, version)
 		possibleLCs[idx] = &str
+		appNameMap[app.name] = app
 	}
 
-	max := int64(4)
+	max := int64(len(suripuApps))
 	describeLCReq := &autoscaling.DescribeLaunchConfigurationsInput{
 		LaunchConfigurationNames: possibleLCs,
 		MaxRecords:               &max,
@@ -92,9 +90,11 @@ Plan:
 
 	parts := strings.Split(lcName, "-prod-")
 
+	selectedApp := appNameMap[parts[0]]
+
 	groupnames := make([]*string, 2)
-	one := fmt.Sprintf("%s-prod", parts[0])
-	two := fmt.Sprintf("%s-prod-green", parts[0])
+	one := fmt.Sprintf("%s-prod", selectedApp.name)
+	two := fmt.Sprintf("%s-prod-green", selectedApp.name)
 	groupnames[0] = &one
 	groupnames[1] = &two
 
@@ -108,11 +108,7 @@ Plan:
 		return 1
 	}
 
-	desiredCapacity, found := desiredCapacityByLCName[parts[0]]
-	if !found {
-		c.Ui.Error(fmt.Sprintf("%s not found. Aborting", parts[0]))
-		return 1
-	}
+	desiredCapacity := selectedApp.targetDesiredCapacity
 
 	for _, asg := range describeASGResp.AutoScalingGroups {
 		asgName := *asg.AutoScalingGroupName

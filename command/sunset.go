@@ -38,30 +38,24 @@ Plan:
 
 	service := autoscaling.New(session.New(), config)
 
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "suripu-admin", "logsindexer"}
 	c.Ui.Output("Which of the following apps do you want to sunset?\n")
-	for idx, appName := range apps {
-		c.Ui.Info(fmt.Sprintf("[%d] %s", idx, appName))
-	}
 
-	c.Ui.Output("")
-	choiceStr, err := c.Ui.Ask("Choice: #")
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("%v", err))
+	for idx, app := range suripuApps {
+		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
+	}
+	appSel, err := c.Ui.Ask("Select an app #: ")
+	appIdx, _ := strconv.Atoi(appSel)
+
+	if err != nil || appIdx >= len(suripuApps) {
+		c.Ui.Error(fmt.Sprintf("Incorrect app selection: %s\n", err))
 		return 1
 	}
 
-	choice, _ := strconv.Atoi(choiceStr)
-	if choice >= len(apps) {
-		c.Ui.Error(fmt.Sprintf("Error reading app #: %s", err))
-		return 1
-	}
-
-	c.Ui.Info(fmt.Sprintf("--> proceeding to sunset app: %s\n", apps[choice]))
+	c.Ui.Info(fmt.Sprintf("--> proceeding to sunset app: %s\n", suripuApps[appIdx].name))
 
 	groupnames := make([]*string, 2)
-	one := fmt.Sprintf("%s-prod", apps[choice])
-	two := fmt.Sprintf("%s-prod-green", apps[choice])
+	one := fmt.Sprintf("%s-prod", suripuApps[appIdx].name)
+	two := fmt.Sprintf("%s-prod-green", suripuApps[appIdx].name)
 	groupnames[0] = &one
 	groupnames[1] = &two
 
@@ -84,21 +78,30 @@ Plan:
 		instancesPerASG[asgName] = asg
 	}
 
-	c.Ui.Output(fmt.Sprintf("ASG matching app : %s\n", apps[choice]))
+	anyASGAtDesiredCapacity := false
+	c.Ui.Output(fmt.Sprintf("ASG matching app : %s\n", suripuApps[appIdx].name))
 	for idx, asgName := range asgs {
 		asg, _ := instancesPerASG[asgName]
 		parts := strings.Split(*asg.LaunchConfigurationName, "-prod-")
 		c.Ui.Info(fmt.Sprintf("[%d] %s (%d instances running %s)", idx, asgName, len(asg.Instances), parts[1]))
+		if len(asg.Instances) >= int(suripuApps[appIdx].targetDesiredCapacity) {
+			anyASGAtDesiredCapacity = true
+		}
+	}
+
+	if anyASGAtDesiredCapacity == false {
+		c.Ui.Error(fmt.Sprintf("No ASGs at desired capacity (%d). Ensure you have confirmed your deploy.", suripuApps[appIdx].targetDesiredCapacity))
+		return 1
 	}
 
 	c.Ui.Output("")
-	choiceStr, err = c.Ui.Ask("Choice: #")
+	choiceStr, err := c.Ui.Ask("Choice: #")
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%v", err))
 		return 1
 	}
 
-	choice, _ = strconv.Atoi(choiceStr)
+	choice, _ := strconv.Atoi(choiceStr)
 	if choice >= len(asgs) {
 		c.Ui.Error(fmt.Sprintf("Error reading app #: %s", err))
 		return 1
@@ -112,6 +115,8 @@ Plan:
 		c.Ui.Warn(fmt.Sprintf("ASG %s already has 0 instances, bailing.", sunsetAsg))
 		return 0
 	}
+
+
 
 	c.Ui.Warn(fmt.Sprintf(plan, sunsetAsg, "N/A", 0))
 

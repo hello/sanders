@@ -27,6 +27,54 @@ type suripuApp struct {
 	javaVersion int
 }
 
+var suripuApps []suripuApp = []suripuApp{
+suripuApp{
+	name: "suripu-app",
+	sg: "sg-d28624b6",
+	instanceType: "m3.medium",
+	instanceProfile: "suripu-app",
+	keyName: "vpc-prod",
+	targetDesiredCapacity: 2,
+	usesPacker: true,
+	javaVersion: 7},
+suripuApp{
+	name: "suripu-service",
+	sg: "sg-11ac0e75",
+	instanceType: "m3.medium",
+	instanceProfile: "suripu-service",
+	keyName: "vpc-prod",
+	targetDesiredCapacity: 4,
+	usesPacker: true,
+	javaVersion: 7},
+suripuApp{
+	name: "suripu-workers",
+	sg: "sg-7054d714",
+	instanceType: "c3.xlarge",
+	instanceProfile: "suripu-workers",
+	keyName: "vpc-prod",
+	targetDesiredCapacity: 2,
+	usesPacker: true,
+	javaVersion: 7},
+suripuApp{
+	name: "suripu-admin",
+	sg: "sg-71773a16",
+	instanceType: "t2.micro",
+	instanceProfile: "suripu-admin",
+	keyName: "vpc-prod",
+	targetDesiredCapacity: 1,
+	usesPacker: false,
+	javaVersion: 7},
+suripuApp{
+	name: "logsindexer",
+	sg: "sg-36f95050",
+	instanceType: "t2.micro",
+	instanceProfile: "logsindexer",
+	keyName: "logsindexer",
+	targetDesiredCapacity: 1,
+	usesPacker: false,
+	javaVersion: 8},
+}
+
 type ByImageTime []*ec2.Image
 
 func (s ByImageTime) Len() int {
@@ -70,13 +118,7 @@ func (c *CreateCommand) Run(args []string) int {
 
 	c.Ui.Output("Which app are we building for?")
 
-	suripuApps := []suripuApp{
-		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app", keyName: "vpc-prod", usesPacker: true, javaVersion: 7},
-		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service", keyName: "vpc-prod", usesPacker: true, javaVersion: 7},
-		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers", keyName: "vpc-prod", usesPacker: true, javaVersion: 7},
-		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin", keyName: "vpc-prod", usesPacker: false, javaVersion: 7},
-		suripuApp{name: "logsindexer", sg: "sg-36f95050", instanceType: "t2.micro", instanceProfile: "logsindexer", keyName: "logsindexer", usesPacker: false, javaVersion: 8},
-	}
+
 
 	for idx, app := range suripuApps {
 		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))

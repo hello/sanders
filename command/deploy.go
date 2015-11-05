@@ -51,13 +51,6 @@ Plan:
 
 	c.Ui.Output("Which app would you like to deploy?")
 
-	suripuApps := []suripuApp{
-		suripuApp{name: "suripu-app"},
-		suripuApp{name: "suripu-service"},
-		suripuApp{name: "suripu-workers"},
-		suripuApp{name: "suripu-admin"},
-		suripuApp{name: "logsindexer"},
-	}
 
 	for idx, app := range suripuApps {
 		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
