@@ -7,6 +7,7 @@ import (
 	"github.com/mitchellh/cli"
 	"strconv"
 	"strings"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type ConfirmCommand struct {
@@ -30,7 +31,7 @@ Plan:
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
-	service := autoscaling.New(config)
+	service := autoscaling.New(session.New(), config)
 
 	desiredCapacityByLCName := make(map[string]int64)
 

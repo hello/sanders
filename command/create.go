@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"bytes"
 	"time"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type suripuApp struct {
@@ -20,6 +21,7 @@ type suripuApp struct {
 	sg string
 	instanceType string
 	instanceProfile string
+	keyName string
 	targetDesiredCapacity int64 //This is the desired capacity of the asg targeted for deployment
 	usesPacker bool
 	javaVersion int
@@ -62,18 +64,18 @@ func (c *CreateCommand) Run(args []string) int {
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
-	asgService := autoscaling.New(config)
-	s3Service := s3.New(config)
-	ec2Service := ec2.New(config)
+	asgService := autoscaling.New(session.New(), config)
+	s3Service := s3.New(session.New(), config)
+	ec2Service := ec2.New(session.New(), config)
 
 	c.Ui.Output("Which app are we building for?")
 
 	suripuApps := []suripuApp{
-		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app", usesPacker: true, javaVersion: 7},
-		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service", usesPacker: true, javaVersion: 7},
-		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers", usesPacker: true, javaVersion: 7},
-		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin", usesPacker: false, javaVersion: 7},
-		suripuApp{name: "logsindexer", sg: "sg-36f95050", instanceType: "t2.micro", instanceProfile: "logsindexer", usesPacker: false, javaVersion: 8},
+		suripuApp{name: "suripu-app", sg: "sg-d28624b6", instanceType: "m3.medium", instanceProfile: "suripu-app", keyName: "vpc-prod", usesPacker: true, javaVersion: 7},
+		suripuApp{name: "suripu-service", sg: "sg-11ac0e75", instanceType: "m3.medium", instanceProfile: "suripu-service", keyName: "vpc-prod", usesPacker: true, javaVersion: 7},
+		suripuApp{name: "suripu-workers", sg: "sg-7054d714", instanceType: "c3.xlarge", instanceProfile: "suripu-workers", keyName: "vpc-prod", usesPacker: true, javaVersion: 7},
+		suripuApp{name: "suripu-admin", sg: "sg-71773a16", instanceType: "t2.micro", instanceProfile: "suripu-admin", keyName: "vpc-prod", usesPacker: false, javaVersion: 7},
+		suripuApp{name: "logsindexer", sg: "sg-36f95050", instanceType: "t2.micro", instanceProfile: "logsindexer", keyName: "logsindexer", usesPacker: false, javaVersion: 8},
 	}
 
 	for idx, app := range suripuApps {
@@ -268,7 +270,7 @@ func (c *CreateCommand) Run(args []string) int {
 			Enabled: aws.Bool(true),
 		},
 		InstanceType:     aws.String(selectedApp.instanceType),
-		KeyName:          aws.String("vpc-prod"),
+		KeyName:          aws.String(selectedApp.keyName),
 		SecurityGroups: []*string{
 			aws.String(selectedApp.sg), // Required
 		},

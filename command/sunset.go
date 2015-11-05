@@ -9,6 +9,7 @@ import (
 	// "sort"
 	"strconv"
 	"strings"
+"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type SunsetCommand struct {
@@ -35,7 +36,7 @@ Plan:
 		Region: aws.String("us-east-1"),
 	}
 
-	service := autoscaling.New(config)
+	service := autoscaling.New(session.New(), config)
 
 	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "suripu-admin", "logsindexer"}
 	c.Ui.Output("Which of the following apps do you want to sunset?\n")

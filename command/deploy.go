@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type ByLCTime []*autoscaling.LaunchConfiguration
@@ -44,7 +45,7 @@ Plan:
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
-	service := autoscaling.New(config)
+	service := autoscaling.New(session.New(), config)
 
 	desiredCapacity := int64(1)
 
