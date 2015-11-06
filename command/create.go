@@ -21,7 +21,6 @@ type suripuApp struct {
 	sg string
 	instanceType string
 	instanceProfile string
-	keyName string
 	targetDesiredCapacity int64 //This is the desired capacity of the asg targeted for deployment
 	usesPacker bool
 	javaVersion int
@@ -33,7 +32,6 @@ suripuApp{
 	sg: "sg-d28624b6",
 	instanceType: "m3.medium",
 	instanceProfile: "suripu-app",
-	keyName: "vpc-prod",
 	targetDesiredCapacity: 2,
 	usesPacker: true,
 	javaVersion: 7},
@@ -42,7 +40,6 @@ suripuApp{
 	sg: "sg-11ac0e75",
 	instanceType: "m3.medium",
 	instanceProfile: "suripu-service",
-	keyName: "vpc-prod",
 	targetDesiredCapacity: 4,
 	usesPacker: true,
 	javaVersion: 7},
@@ -51,7 +48,6 @@ suripuApp{
 	sg: "sg-7054d714",
 	instanceType: "c3.xlarge",
 	instanceProfile: "suripu-workers",
-	keyName: "vpc-prod",
 	targetDesiredCapacity: 2,
 	usesPacker: true,
 	javaVersion: 7},
@@ -60,7 +56,6 @@ suripuApp{
 	sg: "sg-71773a16",
 	instanceType: "t2.micro",
 	instanceProfile: "suripu-admin",
-	keyName: "vpc-prod",
 	targetDesiredCapacity: 1,
 	usesPacker: false,
 	javaVersion: 7},
@@ -69,7 +64,6 @@ suripuApp{
 	sg: "sg-36f95050",
 	instanceType: "t2.micro",
 	instanceProfile: "logsindexer",
-	keyName: "logsindexer",
 	targetDesiredCapacity: 1,
 	usesPacker: false,
 	javaVersion: 8},
