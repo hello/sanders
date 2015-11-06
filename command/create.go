@@ -75,6 +75,8 @@ suripuApp{
 	javaVersion: 8},
 }
 
+var keyBucket string = "hello-keys"
+
 type ByImageTime []*ec2.Image
 
 func (s ByImageTime) Len() int {
@@ -112,8 +114,12 @@ func (c *CreateCommand) Run(args []string) int {
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
+	s3KeyConfig := &aws.Config{
+		Region: aws.String("us-west-1"),
+	}
 	asgService := autoscaling.New(session.New(), config)
 	s3Service := s3.New(session.New(), config)
+	s3KeyService := s3.New(session.New(), s3KeyConfig)
 	ec2Service := ec2.New(session.New(), config)
 
 	c.Ui.Output("Which app are we building for?")
@@ -303,6 +309,38 @@ func (c *CreateCommand) Run(args []string) int {
 
 	launchConfigName := fmt.Sprintf("%s-prod-%s", selectedApp.name, amiVersion)
 
+	//Create deployment-specific KeyPair
+
+	keyName := fmt.Sprintf("%s-%d", launchConfigName, time.Now().Unix())
+	keyPairParams := &ec2.CreateKeyPairInput{
+		KeyName: aws.String(keyName), // Required
+		DryRun:  aws.Bool(false),
+	}
+	keyPairResp, err := ec2Service.CreateKeyPair(keyPairParams)
+
+	if err != nil {
+		c.Ui.Error(fmt.Sprintf("Failed to create KeyPair. %s", err.Error()))
+		return 1
+	}
+
+	c.Ui.Info(fmt.Sprintf("Created KeyPair: %s. \n", *keyPairResp.KeyName))
+
+	//Upload key to S3
+	key := fmt.Sprintf("/prod/%s/%s.pem", selectedApp.name, *keyPairResp.KeyName)
+
+	uploadResult, err := s3KeyService.PutObject(&s3.PutObjectInput{
+		Body:   	strings.NewReader(*keyPairResp.KeyMaterial),
+		Bucket:		aws.String(keyBucket),
+		Key:    	&key,
+	})
+
+	if err != nil {
+		c.Ui.Error(fmt.Sprintf("Failed to upload key %s. %s\n", key, err))
+		return 1
+	}
+
+	c.Ui.Info(fmt.Sprintf("Uploaded key %s to S3. (Etag: %s)\n", key, *uploadResult.ETag))
+
 	createLCParams := &autoscaling.CreateLaunchConfigurationInput{
 		LaunchConfigurationName:  aws.String(launchConfigName), // Required
 		AssociatePublicIpAddress: aws.Bool(true),
@@ -312,7 +350,7 @@ func (c *CreateCommand) Run(args []string) int {
 			Enabled: aws.Bool(true),
 		},
 		InstanceType:     aws.String(selectedApp.instanceType),
-		KeyName:          aws.String(selectedApp.keyName),
+		KeyName:          aws.String(keyName),
 		SecurityGroups: []*string{
 			aws.String(selectedApp.sg), // Required
 		},
@@ -324,11 +362,15 @@ func (c *CreateCommand) Run(args []string) int {
 	ok, err := c.Ui.Ask("'ok' if you agree, anything else to cancel: ")
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
+		Cleanup(keyName, key, c.Ui)
 		return 1
 	}
 
 	if ok != "ok" {
 		c.Ui.Warn("Cancelled.")
+		if !Cleanup(keyName, key, c.Ui) {
+			return 1
+		}
 		return 0
 	}
 
@@ -338,12 +380,53 @@ func (c *CreateCommand) Run(args []string) int {
 		// Message from an error.
 		c.Ui.Error(fmt.Sprintf("Failed to create Launch Configuration: %s", launchConfigName))
 		c.Ui.Error(fmt.Sprintln(createError.Error()))
+		Cleanup(keyName, key, c.Ui)
 		return 1
 	}
 
 	c.Ui.Output(fmt.Sprintln("Launch Configuration created."))
 
 	return 0
+}
+
+func Cleanup(keyName string, objectName string, ui cli.ColoredUi ) bool {
+
+	ui.Info("")
+	ui.Info(fmt.Sprintf("Cleaning up created KeyPair: %s", keyName))
+
+	//Remove any created keys from S3 & EC2
+	ec2Service := ec2.New(session.New(), aws.NewConfig().WithRegion("us-east-1"))
+	s3KeyService := s3.New(session.New(), aws.NewConfig().WithRegion("us-west-1"))
+
+	//Delete key from EC2
+	params := &ec2.DeleteKeyPairInput{
+		KeyName: aws.String(keyName), // Required
+		DryRun:  aws.Bool(false),
+	}
+	_, err := ec2Service.DeleteKeyPair(params)
+
+	if err != nil {
+		ui.Error(fmt.Sprintf("Failed to delete KeyPair: %s", err.Error()))
+		return false
+	}
+
+	ui.Info(fmt.Sprintf("Successfully deleted KeyPair: %s", keyName))
+
+	//Delete pem file from s3
+	delParams := &s3.DeleteObjectInput{
+		Bucket:       aws.String(keyBucket), // Required
+		Key:          aws.String(objectName),  // Required
+	}
+	_, objErr := s3KeyService.DeleteObject(delParams)
+
+	if objErr != nil {
+		ui.Error(fmt.Sprintf("Failed to delete S3 Object: %s", objErr.Error()))
+		return false
+	}
+
+	ui.Info(fmt.Sprintf("Successfully deleted S3 object: %s", objectName))
+
+	return true
 }
 
 func (c *CreateCommand) Synopsis() string {
