@@ -44,7 +44,7 @@ suripuApp{
 	instanceProfile: "suripu-service",
 	keyName: "vpc-prod",
 	targetDesiredCapacity: 4,
-	usesPacker: true,
+	usesPacker: false,
 	javaVersion: 7},
 suripuApp{
 	name: "suripu-workers",
@@ -67,7 +67,7 @@ suripuApp{
 suripuApp{
 	name: "logsindexer",
 	sg: "sg-36f95050",
-	instanceType: "t2.micro",
+	instanceType: "m3.medium",
 	instanceProfile: "logsindexer",
 	keyName: "logsindexer",
 	targetDesiredCapacity: 1,
