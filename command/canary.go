@@ -104,6 +104,29 @@ func (c *CanaryCommand) Run(args []string) int {
 		return 1
 	}
 
+	//Tag the ASG so version number can be passed to instance
+	params := &autoscaling.CreateOrUpdateTagsInput{
+		Tags: []*autoscaling.Tag{ // Required
+			{ // Required
+				Key:               aws.String("Launch Configuration"), // Required
+				PropagateAtLaunch: aws.Bool(true),
+				ResourceId:        &asgName,
+				ResourceType:      aws.String("auto-scaling-group"),
+				Value:             &lcName,
+			},
+		},
+	}
+	resp, err := service.CreateOrUpdateTags(params)
+
+	if err != nil {
+		c.Ui.Error(fmt.Sprintf("%s", err))
+		return 1
+	}
+
+	if resp != nil {
+		c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
+	}
+
 	c.Ui.Info("Update autoscaling group request acknowledged")
 
 	c.Ui.Info("Run: `sanders status` to monitor servers being attached to ELB")

@@ -12,8 +12,10 @@ import (
 var Commands map[string]cli.CommandFactory
 
 var (
-	UiColorBlack = cli.UiColor{37, false}
+	UiColorBlack = cli.UiColor{30, false}
+	UiColorWhite = cli.UiColor{37, false}
 )
+
 
 func init() {
 
@@ -21,6 +23,7 @@ func init() {
 		InfoColor:  cli.UiColorGreen,
 		ErrorColor: cli.UiColorRed,
 		WarnColor:  cli.UiColorYellow,
+		OutputColor: UiColorWhite,
 		Ui: &cli.BasicUi{
 			Writer: os.Stdout,
 			Reader: os.Stdin,
