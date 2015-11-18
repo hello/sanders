@@ -170,10 +170,16 @@ func (c *StatusCommand) Run(args []string) int {
 			if !strings.HasPrefix(key, app.name) {
 				continue
 			}
+
+			if strings.Contains(key, "canary") {
+				continue
+			}
+
 			if val < int(app.targetDesiredCapacity) {
 				c.Ui.Warn(fmt.Sprintf("Warning: %s has only %d instance(s) running. Total desired capacity is: %d", key, val, app.targetDesiredCapacity))
 				c.Ui.Warn(fmt.Sprintf("Please ensure you have fully deployed %s before proceeding.", app.name))
 			}
+
 			if val > int(app.targetDesiredCapacity) {
 				c.Ui.Error(fmt.Sprintf("Error: %s has %d instance(s) running. This exceeds the total desired capacity of: %d", key, val, app.targetDesiredCapacity))
 			}
