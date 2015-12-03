@@ -73,6 +73,15 @@ suripuApp{
 	targetDesiredCapacity: 1,
 	usesPacker: false,
 	javaVersion: 8},
+ suripuApp{
+	name: "sense-firehose",
+	sg: "sg-5296b834",
+	instanceType: "m3.medium",
+	instanceProfile: "sense-firehose",
+	keyName: "sense-firehose",
+	targetDesiredCapacity: 1,
+	usesPacker: false,
+	javaVersion: 8},
 }
 
 type ByImageTime []*ec2.Image
