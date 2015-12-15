@@ -3,12 +3,12 @@ package command
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
 	"sort"
 	"strconv"
 	"strings"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type ByLCTime []*autoscaling.LaunchConfiguration
@@ -24,7 +24,8 @@ func (s ByLCTime) Less(i, j int) bool {
 }
 
 type DeployCommand struct {
-	Ui cli.ColoredUi
+	Ui       cli.ColoredUi
+	Notifier BasicNotifier
 }
 
 func (c *DeployCommand) Help() string {
@@ -50,7 +51,6 @@ Plan:
 	desiredCapacity := int64(1)
 
 	c.Ui.Output("Which app would you like to deploy?")
-
 
 	for idx, app := range suripuApps {
 		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
@@ -163,13 +163,17 @@ Plan:
 				MaxSize:                 &maxSize,
 			}
 
+			deployAction := NewDeployAction("deploy", asgName, lcName, *updateReq.DesiredCapacity)
 			c.Ui.Info("Executing plan:")
 			c.Ui.Info(fmt.Sprintf(plan, asgName, lcName, *updateReq.DesiredCapacity))
+
 			_, err = service.UpdateAutoScalingGroup(updateReq)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s", err))
 				return 1
 			}
+
+			c.Notifier.Notify(deployAction)
 
 			//Tag the ASG so version number can be passed to instance
 			params := &autoscaling.CreateOrUpdateTagsInput{

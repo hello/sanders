@@ -1,6 +1,9 @@
 package main
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/hello/sanders/command"
 	"github.com/hello/sanders/ui"
 	"github.com/mitchellh/cli"
@@ -16,6 +19,14 @@ var (
 )
 
 func init() {
+	config := &aws.Config{
+		Region: aws.String("us-east-1"),
+	}
+	iamService := iam.New(session.New(), config)
+	getUserReq := &iam.GetUserInput{}
+	resp, _ := iamService.GetUser(getUserReq)
+
+	user := *resp.User.UserName
 
 	cui := cli.ColoredUi{
 		InfoColor:  cli.UiColorGreen,
@@ -32,41 +43,50 @@ func init() {
 		Ui:     cui,
 	}
 
+	notifier := command.NewSlackNotifier(user)
+
 	Commands = map[string]cli.CommandFactory{
 
 		"status": func() (cli.Command, error) {
 			return &command.StatusCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"sunset": func() (cli.Command, error) {
 			return &command.SunsetCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"deploy": func() (cli.Command, error) {
 			return &command.DeployCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"hosts": func() (cli.Command, error) {
 			return &command.HostsCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"canary": func() (cli.Command, error) {
 			return &command.CanaryCommand{
-				Ui: cpui,
+				Ui:       cpui,
+				Notifier: notifier,
 			}, nil
 		},
 		"confirm": func() (cli.Command, error) {
 			return &command.ConfirmCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"create": func() (cli.Command, error) {
 			return &command.CreateCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 	}

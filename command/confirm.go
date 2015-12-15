@@ -3,15 +3,16 @@ package command
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
 	"strconv"
 	"strings"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type ConfirmCommand struct {
-	Ui cli.ColoredUi
+	Ui       cli.ColoredUi
+	Notifier BasicNotifier
 }
 
 func (c *ConfirmCommand) Help() string {
@@ -32,7 +33,6 @@ Plan:
 		Region: aws.String("us-east-1"),
 	}
 	service := autoscaling.New(session.New(), config)
-
 
 	version, err := c.Ui.Ask("Which version do you want to confirm (ex 8.8.8): ")
 	if err != nil {
@@ -149,7 +149,8 @@ Plan:
 				c.Ui.Error(fmt.Sprintf("%s", err))
 				return 1
 			}
-
+			deployAction := NewDeployAction("confirm", asgName, lcName, desiredCapacity)
+			c.Notifier.Notify(deployAction)
 			// fmt.Println(*updateReq.AutoScalingGroupName)
 
 			c.Ui.Info("Update autoscaling group request acknowledged")
