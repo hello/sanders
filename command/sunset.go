@@ -7,13 +7,14 @@ import (
 	// "github.com/mitchellh/packer/packer"
 	"fmt"
 	// "sort"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"strconv"
 	"strings"
-"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type SunsetCommand struct {
-	Ui cli.ColoredUi
+	Ui       cli.ColoredUi
+	Notifier BasicNotifier
 }
 
 func (c *SunsetCommand) Help() string {
@@ -128,9 +129,8 @@ Plan:
 		return 0
 	}
 
-
-
-	c.Ui.Warn(fmt.Sprintf(plan, sunsetAsg, "N/A", 0))
+	completePlan := fmt.Sprintf(plan, sunsetAsg, "N/A", 0)
+	c.Ui.Warn(completePlan)
 
 	ok, err := c.Ui.Ask("'ok' if you agree, anything else to cancel: ")
 	if err != nil {
@@ -151,6 +151,8 @@ Plan:
 		MaxSize:              &numServers,
 	}
 
+	deployAction := NewDeployAction("sunset", sunsetAsg, "-", numServers)
+
 	c.Ui.Info("Executing plan:")
 	c.Ui.Info(fmt.Sprintf(plan, sunsetAsg, "N/A", *updateReq.DesiredCapacity))
 	_, err = service.UpdateAutoScalingGroup(updateReq)
@@ -160,6 +162,7 @@ Plan:
 	}
 	c.Ui.Info("Update autoscaling group request acknowledged")
 
+	c.Notifier.Notify(deployAction)
 	c.Ui.Info("Run: `sanders status` to monitor servers being attached to ELB")
 	return 0
 }

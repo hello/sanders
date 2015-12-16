@@ -3,11 +3,11 @@ package command
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/hello/sanders/ui"
 	"strings"
 	"time"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 const plan = `
@@ -20,7 +20,8 @@ Plan:
 `
 
 type CanaryCommand struct {
-	Ui ui.ProgressUi
+	Ui       ui.ProgressUi
+	Notifier BasicNotifier
 }
 
 func (c *CanaryCommand) Help() string {
@@ -98,12 +99,14 @@ func (c *CanaryCommand) Run(args []string) int {
 		}
 	}
 
+	deployAction := NewDeployAction("canary", asgName, lcName, 1)
 	_, err = c.update(service, 1, asgName, lcName)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Could not update LC: %s", err))
 		return 1
 	}
 
+	c.Notifier.Notify(deployAction)
 	c.Ui.Info("Update autoscaling group request acknowledged")
 
 	c.Ui.Info("Run: `sanders status` to monitor servers being attached to ELB")
