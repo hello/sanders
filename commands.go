@@ -9,6 +9,7 @@ import (
 	"github.com/mitchellh/cli"
 	"os"
 	"os/signal"
+	"fmt"
 )
 
 // Commands is the mapping of all the available Serf commands.
@@ -22,12 +23,6 @@ func init() {
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
-	iamService := iam.New(session.New(), config)
-	getUserReq := &iam.GetUserInput{}
-	resp, _ := iamService.GetUser(getUserReq)
-
-	user := *resp.User.UserName
-
 	cui := cli.ColoredUi{
 		InfoColor:  cli.UiColorGreen,
 		ErrorColor: cli.UiColorRed,
@@ -38,6 +33,17 @@ func init() {
 		},
 	}
 
+	iamService := iam.New(session.New(), config)
+	getUserReq := &iam.GetUserInput{}
+
+	resp, err := iamService.GetUser(getUserReq)
+
+	if err != nil {
+		cui.Ui.Error(fmt.Sprintln(err.Error()))
+		return
+	}
+
+	user := *resp.User.UserName
 	cpui := ui.ProgressUi{
 		Writer: os.Stdout,
 		Ui:     cui,
