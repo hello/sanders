@@ -106,6 +106,52 @@ func (c *CanaryCommand) Run(args []string) int {
 		return 1
 	}
 
+	//Tag the ASG so version number can be passed to instance
+	params := &autoscaling.CreateOrUpdateTagsInput{
+		Tags: []*autoscaling.Tag{ // Required
+			{ // Required
+				Key:               aws.String("Launch Configuration"), // Required
+				PropagateAtLaunch: aws.Bool(true),
+				ResourceId:        &asgName,
+				ResourceType:      aws.String("auto-scaling-group"),
+				Value:             &lcName,
+			},
+		},
+	}
+	resp, err := service.CreateOrUpdateTags(params)
+
+	if err != nil {
+		c.Ui.Error(fmt.Sprintf("%s", err))
+		return 1
+	}
+
+	if resp != nil {
+		c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
+	}
+
+	//Tag the ASG so version number can be passed to instance
+	params = &autoscaling.CreateOrUpdateTagsInput{
+		Tags: []*autoscaling.Tag{ // Required
+			{ // Required
+				Key:               aws.String("Name"), // Required
+				PropagateAtLaunch: aws.Bool(true),
+				ResourceId:        &asgName,
+				ResourceType:      aws.String("auto-scaling-group"),
+				Value:             aws.String("suripu-app-canary"),
+			},
+		},
+	}
+	resp, err = service.CreateOrUpdateTags(params)
+
+	if err != nil {
+		c.Ui.Error(fmt.Sprintf("%s", err))
+		return 1
+	}
+
+	if resp != nil {
+		c.Ui.Info("Added 'Name' tag to ASG.")
+	}
+
 	c.Notifier.Notify(deployAction)
 	c.Ui.Info("Update autoscaling group request acknowledged")
 

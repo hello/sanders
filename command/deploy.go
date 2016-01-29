@@ -198,6 +198,31 @@ Plan:
 				c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
 			}
 
+			appNameEnv := fmt.Sprintf("%s-prod", appName)
+
+			//Tag the ASG so version number can be passed to instance
+			params = &autoscaling.CreateOrUpdateTagsInput{
+				Tags: []*autoscaling.Tag{ // Required
+					{ // Required
+						Key:               aws.String("Name"), // Required
+						PropagateAtLaunch: aws.Bool(true),
+						ResourceId:        &asgName,
+						ResourceType:      aws.String("auto-scaling-group"),
+						Value:             &appNameEnv,
+					},
+				},
+			}
+			resp, err = service.CreateOrUpdateTags(params)
+
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("%s", err))
+				return 1
+			}
+
+			if resp != nil {
+				c.Ui.Info("Added 'Name' tag to ASG.")
+			}
+
 			c.Ui.Info("Update autoscaling group request acknowledged")
 			continue
 		}
