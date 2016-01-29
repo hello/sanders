@@ -25,6 +25,7 @@ type suripuApp struct {
 	targetDesiredCapacity int64 //This is the desired capacity of the asg targeted for deployment
 	usesPacker            bool
 	javaVersion           int
+	packagePath			  string
 }
 
 var suripuApps []suripuApp = []suripuApp{
@@ -36,7 +37,8 @@ var suripuApps []suripuApp = []suripuApp{
 		keyName:               "vpc-prod",
 		targetDesiredCapacity: 2,
 		usesPacker:            true,
-		javaVersion:           7},
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
 	suripuApp{
 		name:                  "suripu-service",
 		sg:                    "sg-11ac0e75",
@@ -45,7 +47,8 @@ var suripuApps []suripuApp = []suripuApp{
 		keyName:               "vpc-prod",
 		targetDesiredCapacity: 4,
 		usesPacker:            false,
-		javaVersion:           7},
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
 	suripuApp{
 		name:                  "suripu-workers",
 		sg:                    "sg-7054d714",
@@ -54,7 +57,8 @@ var suripuApps []suripuApp = []suripuApp{
 		keyName:               "vpc-prod",
 		targetDesiredCapacity: 2,
 		usesPacker:            true,
-		javaVersion:           7},
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
 	suripuApp{
 		name:                  "suripu-admin",
 		sg:                    "sg-71773a16",
@@ -63,7 +67,8 @@ var suripuApps []suripuApp = []suripuApp{
 		keyName:               "vpc-prod",
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
-		javaVersion:           7},
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
 	suripuApp{
 		name:                  "logsindexer",
 		sg:                    "sg-36f95050",
@@ -72,7 +77,8 @@ var suripuApps []suripuApp = []suripuApp{
 		keyName:               "logsindexer",
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
-		javaVersion:           8},
+		javaVersion:           8,
+		packagePath:		   "com/hello/suripu"},
 	suripuApp{
 		name:                  "sense-firehose",
 		sg:                    "sg-5296b834",
@@ -81,7 +87,18 @@ var suripuApps []suripuApp = []suripuApp{
 		keyName:               "sense-firehose",
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
-		javaVersion:           8},
+		javaVersion:           8,
+		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "hello-time",
+		sg:                    "sg-5c371525",
+		instanceType:          "t2.micro",
+		instanceProfile:       "hello-time",
+		keyName:               "vpc-prod",
+		targetDesiredCapacity: 1,
+		usesPacker:            false,
+		javaVersion:           7,
+		packagePath:		   "com/hello/time"},
 }
 
 type ByImageTime []*ec2.Image
@@ -225,7 +242,7 @@ func (c *CreateCommand) Run(args []string) int {
 
 	} else {
 
-		pkgPrefix := fmt.Sprintf("packages/com/hello/suripu/%s/", selectedApp.name)
+		pkgPrefix := fmt.Sprintf("packages/%s/%s/", selectedApp.packagePath, selectedApp.name)
 
 		c.Ui.Output("")
 		//retrieve package list from S3 for selectedApp
@@ -295,6 +312,7 @@ func (c *CreateCommand) Run(args []string) int {
 		//do token replacement
 		userData = strings.Replace(userData, "{app_version}", amiVersion, -1)
 		userData = strings.Replace(userData, "{app_name}", selectedApp.name, -1)
+		userData = strings.Replace(userData, "{package_path}", selectedApp.packagePath, -1)
 		userData = strings.Replace(userData, "{default_region}", "us-east-1", -1)
 		userData = strings.Replace(userData, "{java_version}", strconv.Itoa(selectedApp.javaVersion), -1)
 
