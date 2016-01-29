@@ -106,52 +106,6 @@ func (c *CanaryCommand) Run(args []string) int {
 		return 1
 	}
 
-	//Tag the ASG so version number can be passed to instance
-	params := &autoscaling.CreateOrUpdateTagsInput{
-		Tags: []*autoscaling.Tag{ // Required
-			{ // Required
-				Key:               aws.String("Launch Configuration"), // Required
-				PropagateAtLaunch: aws.Bool(true),
-				ResourceId:        &asgName,
-				ResourceType:      aws.String("auto-scaling-group"),
-				Value:             &lcName,
-			},
-		},
-	}
-	resp, err := service.CreateOrUpdateTags(params)
-
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("%s", err))
-		return 1
-	}
-
-	if resp != nil {
-		c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
-	}
-
-	//Tag the ASG so version number can be passed to instance
-	params = &autoscaling.CreateOrUpdateTagsInput{
-		Tags: []*autoscaling.Tag{ // Required
-			{ // Required
-				Key:               aws.String("Name"), // Required
-				PropagateAtLaunch: aws.Bool(true),
-				ResourceId:        &asgName,
-				ResourceType:      aws.String("auto-scaling-group"),
-				Value:             aws.String("suripu-app-canary"),
-			},
-		},
-	}
-	resp, err = service.CreateOrUpdateTags(params)
-
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("%s", err))
-		return 1
-	}
-
-	if resp != nil {
-		c.Ui.Info("Added 'Name' tag to ASG.")
-	}
-
 	c.Notifier.Notify(deployAction)
 	c.Ui.Info("Update autoscaling group request acknowledged")
 
@@ -175,7 +129,50 @@ func (c *CanaryCommand) update(service *autoscaling.AutoScaling, desiredCapacity
 		c.Ui.Info(planMsg)
 	}
 
-	return service.UpdateAutoScalingGroup(updateReq)
+	resp, err := service.UpdateAutoScalingGroup(updateReq)
+
+	if (desiredCapacity > 0) && (err == nil) {
+		respTag, err := c.updateASGTag(service, asgName, "Launch Configuration", lcName, true)
+		if err != nil {
+			c.Ui.Error(fmt.Sprintf("%s", err))
+			return resp, err
+		}
+
+		if respTag != nil {
+			c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
+		}
+
+		respTag, err = c.updateASGTag(service, asgName, "Name", "suripu-app-canary", true)
+		if err != nil {
+			c.Ui.Error(fmt.Sprintf("%s", err))
+			return resp, err
+		}
+
+		if respTag != nil {
+			c.Ui.Info("Added 'Name' tag to ASG.")
+		}
+	}
+
+	return resp, err
+}
+
+func (c *CanaryCommand) updateASGTag(service *autoscaling.AutoScaling, asgName string, tagName string, tagValue string, propagate bool) (*autoscaling.CreateOrUpdateTagsOutput, error){
+
+	//Tag the ASG so version number can be passed to instance
+	params := &autoscaling.CreateOrUpdateTagsInput{
+		Tags: []*autoscaling.Tag{// Required
+			{// Required
+				Key:               aws.String(tagName), // Required
+				PropagateAtLaunch: aws.Bool(propagate),
+				ResourceId:        aws.String(asgName),
+				ResourceType:      aws.String("auto-scaling-group"),
+				Value:             aws.String(tagValue),
+			},
+		},
+	}
+	resp, err := service.CreateOrUpdateTags(params)
+
+	return resp, err
 }
 
 func (c *CanaryCommand) check(service *autoscaling.AutoScaling, asgName string, ready chan bool) {
