@@ -185,7 +185,8 @@ Plan:
 				c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
 			}
 
-			respTag, err = c.updateASGTag(service, asgName, "Name", appName, true)
+			appNameEnv := fmt.Sprintf("%s-prod", appName)
+			respTag, err = c.updateASGTag(service, asgName, "Name", appNameEnv, true)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s", err))
 				return 1
