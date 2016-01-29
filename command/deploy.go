@@ -185,7 +185,7 @@ Plan:
 				c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
 			}
 
-			respTag, err = c.updateASGTag(service, asgName, "Name", "suripu-app-canary", true)
+			respTag, err = c.updateASGTag(service, asgName, "Name", appName, true)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s", err))
 				return 1
