@@ -34,7 +34,7 @@ var suripuApps []suripuApp = []suripuApp{
 		sg:                    "sg-d28624b6",
 		instanceType:          "m3.medium",
 		instanceProfile:       "suripu-app",
-		keyName:               "vpc-prod",
+		keyName:               "vpc-prod-2016-02",
 		targetDesiredCapacity: 2,
 		usesPacker:            true,
 		javaVersion:           7,
