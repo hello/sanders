@@ -99,6 +99,16 @@ var suripuApps []suripuApp = []suripuApp{
 		usesPacker:            false,
 		javaVersion:           7,
 		packagePath:		   "com/hello/time"},
+	suripuApp{
+		name:                  "suripu-queue",
+		sg:                    "sg-3e55ba46",
+		instanceType:          "m3.medium",
+		instanceProfile:       "suripu-workers",
+		keyName:               "vpc-prod-2016-02",
+		targetDesiredCapacity: 1,
+		usesPacker:            true,
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
 }
 
 type ByImageTime []*ec2.Image
