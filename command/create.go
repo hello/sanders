@@ -109,6 +109,16 @@ var suripuApps []suripuApp = []suripuApp{
 		usesPacker:            true,
 		javaVersion:           7,
 		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "messeji",
+		sg:                    "sg-45c5c73c",
+		instanceType:          "m3.medium",
+		instanceProfile:       "messeji",
+		keyName:               "vpc-prod",
+		targetDesiredCapacity: 4,
+		usesPacker:            false,
+		javaVersion:           8,
+		packagePath:		   		 "com/hello"},
 }
 
 type ByImageTime []*ec2.Image
@@ -273,7 +283,7 @@ func (c *CreateCommand) Run(args []string) int {
 
 		availablePackages := make([]*s3.Object, 0)
 		for _, item := range s3Resp.Contents {
-			if strings.Contains(*item.Key, ".deb") {
+			if strings.HasSuffix(*item.Key, ".deb") {
 				availablePackages = append(availablePackages, item)
 			}
 		}
