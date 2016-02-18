@@ -94,7 +94,7 @@ func (c *StatusCommand) Run(args []string) int {
 			imageVersion := ""
 			if lcNames[*state.InstanceId] != "" {
 				parts = strings.SplitAfterN(lcNames[*state.InstanceId], "-", 4)
-				imageVersion = parts[3]
+				imageVersion = parts[len(parts)-1]
 			} else {
 				parts = strings.SplitAfterN(amiName, "-", 4)
 				imageVersion = parts[2]
