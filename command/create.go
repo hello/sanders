@@ -339,8 +339,8 @@ func (c *CreateCommand) Run(args []string) int {
 		io.WriteString(hash, userData)
 		userDataHash := fmt.Sprintf("%x", hash.Sum(nil))
 
-		if userDataHash == expectedUserDataHash {
-			c.Ui.Error("User data hash from S3 does not match the one expected by your version of Sanders. Please correct this before proceeding.")
+		if userDataHash != expectedUserDataHash {
+			c.Ui.Error("UserData hash from S3 does not match the one expected by your version of Sanders. Please correct this before proceeding.")
 			return 0
 		}
 
