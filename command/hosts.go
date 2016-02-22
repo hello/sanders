@@ -33,7 +33,7 @@ func (c *HostsCommand) Run(args []string) int {
 		return 1
 	}
 
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "sense-firehose"}
+	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "sense-firehose", "suripu-queue", "messeji"}
 
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
