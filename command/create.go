@@ -1,72 +1,115 @@
 package command
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/autoscaling"
-	"github.com/mitchellh/cli"
-	"strings"
-	"strconv"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"encoding/base64"
-	"sort"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"bytes"
-	"time"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/mitchellh/cli"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type suripuApp struct {
-	name string
-	sg string
-	instanceType string
-	instanceProfile string
+	name                  string
+	sg                    string
+	instanceType          string
+	instanceProfile       string
+	keyName               string
 	targetDesiredCapacity int64 //This is the desired capacity of the asg targeted for deployment
-	usesPacker bool
-	javaVersion int
+	usesPacker            bool
+	javaVersion           int
+	packagePath			  string
 }
 
 var suripuApps []suripuApp = []suripuApp{
-suripuApp{
-	name: "suripu-app",
-	sg: "sg-d28624b6",
-	instanceType: "m3.medium",
-	instanceProfile: "suripu-app",
-	targetDesiredCapacity: 2,
-	usesPacker: true,
-	javaVersion: 7},
-suripuApp{
-	name: "suripu-service",
-	sg: "sg-11ac0e75",
-	instanceType: "m3.medium",
-	instanceProfile: "suripu-service",
-	targetDesiredCapacity: 4,
-	usesPacker: true,
-	javaVersion: 7},
-suripuApp{
-	name: "suripu-workers",
-	sg: "sg-7054d714",
-	instanceType: "c3.xlarge",
-	instanceProfile: "suripu-workers",
-	targetDesiredCapacity: 2,
-	usesPacker: true,
-	javaVersion: 7},
-suripuApp{
-	name: "suripu-admin",
-	sg: "sg-71773a16",
-	instanceType: "t2.micro",
-	instanceProfile: "suripu-admin",
-	targetDesiredCapacity: 1,
-	usesPacker: false,
-	javaVersion: 7},
-suripuApp{
-	name: "logsindexer",
-	sg: "sg-36f95050",
-	instanceType: "t2.micro",
-	instanceProfile: "logsindexer",
-	targetDesiredCapacity: 1,
-	usesPacker: false,
-	javaVersion: 8},
+	suripuApp{
+		name:                  "suripu-app",
+		sg:                    "sg-d28624b6",
+		instanceType:          "m3.medium",
+		instanceProfile:       "suripu-app",
+		targetDesiredCapacity: 2,
+		usesPacker:            true,
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "suripu-service",
+		sg:                    "sg-11ac0e75",
+		instanceType:          "m3.medium",
+		instanceProfile:       "suripu-service",
+		targetDesiredCapacity: 4,
+		usesPacker:            false,
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "suripu-workers",
+		sg:                    "sg-7054d714",
+		instanceType:          "c3.xlarge",
+		instanceProfile:       "suripu-workers",
+		targetDesiredCapacity: 2,
+		usesPacker:            true,
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "suripu-admin",
+		sg:                    "sg-71773a16",
+		instanceType:          "t2.micro",
+		instanceProfile:       "suripu-admin",
+		targetDesiredCapacity: 1,
+		usesPacker:            false,
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "logsindexer",
+		sg:                    "sg-36f95050",
+		instanceType:          "m3.medium",
+		instanceProfile:       "logsindexer",
+		targetDesiredCapacity: 1,
+		usesPacker:            false,
+		javaVersion:           8,
+		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "sense-firehose",
+		sg:                    "sg-5296b834",
+		instanceType:          "m3.medium",
+		instanceProfile:       "sense-firehose",
+		targetDesiredCapacity: 1,
+		usesPacker:            false,
+		javaVersion:           8,
+		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "hello-time",
+		sg:                    "sg-5c371525",
+		instanceType:          "t2.micro",
+		instanceProfile:       "hello-time",
+		targetDesiredCapacity: 1,
+		usesPacker:            false,
+		javaVersion:           7,
+		packagePath:		   "com/hello/time"},
+	suripuApp{
+		name:                  "suripu-queue",
+		sg:                    "sg-3e55ba46",
+		instanceType:          "m3.medium",
+		instanceProfile:       "suripu-workers",
+		targetDesiredCapacity: 1,
+		usesPacker:            true,
+		javaVersion:           7,
+		packagePath:		   "com/hello/suripu"},
+	suripuApp{
+		name:                  "messeji",
+		sg:                    "sg-45c5c73c",
+		instanceType:          "m3.medium",
+		instanceProfile:       "messeji",
+		targetDesiredCapacity: 4,
+		usesPacker:            false,
+		javaVersion:           8,
+		packagePath:		   		 "com/hello"},
 }
 
 var keyBucket string = "hello-keys"
@@ -96,7 +139,8 @@ func (s ByObjectLastModified) Less(i, j int) bool {
 }
 
 type CreateCommand struct {
-	Ui cli.ColoredUi
+	Ui       cli.ColoredUi
+	Notifier BasicNotifier
 }
 
 func (c *CreateCommand) Help() string {
@@ -117,8 +161,6 @@ func (c *CreateCommand) Run(args []string) int {
 	ec2Service := ec2.New(session.New(), config)
 
 	c.Ui.Output("Which app are we building for?")
-
-
 
 	for idx, app := range suripuApps {
 		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
@@ -162,7 +204,6 @@ func (c *CreateCommand) Run(args []string) int {
 	amiVersion := ""
 	userData := ""
 
-
 	if selectedApp.usesPacker {
 		//Allow user to enter version number and search for AMI based on that
 		c.Ui.Warn(fmt.Sprintf("%s not yet handled by Packer-free deployment. Proceeding with Packer-created AMI selection.", selectedApp.name))
@@ -170,7 +211,7 @@ func (c *CreateCommand) Run(args []string) int {
 		ec2ParamsAll := &ec2.DescribeImagesInput{
 			DryRun: aws.Bool(false),
 			Filters: []*ec2.Filter{
-				{// Required
+				{ // Required
 					Name: aws.String("is-public"),
 					Values: []*string{
 						aws.String("false"), // Required
@@ -218,17 +259,17 @@ func (c *CreateCommand) Run(args []string) int {
 
 	} else {
 
-		pkgPrefix := fmt.Sprintf("packages/com/hello/suripu/%s/", selectedApp.name)
+		pkgPrefix := fmt.Sprintf("packages/%s/%s/", selectedApp.packagePath, selectedApp.name)
 
 		c.Ui.Output("")
 		//retrieve package list from S3 for selectedApp
 		s3ListParams := &s3.ListObjectsInput{
-			Bucket:       aws.String("hello-deploy"), // Required
+			Bucket: aws.String("hello-deploy"), // Required
 			//Delimiter:    aws.String("/"),
 			//EncodingType: aws.String("EncodingType"),
 			//Marker:       aws.String("Marker"),
-			MaxKeys:      aws.Int64(100000),
-			Prefix:       aws.String(pkgPrefix),
+			MaxKeys: aws.Int64(100000),
+			Prefix:  aws.String(pkgPrefix),
 		}
 		s3Resp, err := s3Service.ListObjects(s3ListParams)
 
@@ -239,7 +280,7 @@ func (c *CreateCommand) Run(args []string) int {
 
 		availablePackages := make([]*s3.Object, 0)
 		for _, item := range s3Resp.Contents {
-			if strings.Contains(*item.Key, ".deb") {
+			if strings.HasSuffix(*item.Key, ".deb") {
 				availablePackages = append(availablePackages, item)
 			}
 		}
@@ -247,14 +288,13 @@ func (c *CreateCommand) Run(args []string) int {
 
 		versions := make([]string, 0)
 
-
 		c.Ui.Info(fmt.Sprintf("Latest 10 packages available for %s:", selectedApp.name))
 		c.Ui.Info(" #\tVersion:  \tLast Modified:")
 		c.Ui.Info("---|----------------|---------------")
 		numImages := Min(len(availablePackages), 10)
 		for idx := 0; idx < numImages; idx++ {
 			objectKeyChunks := strings.Split(*availablePackages[idx].Key, "/")
-			versionNumber := objectKeyChunks[len(objectKeyChunks) - 2]
+			versionNumber := objectKeyChunks[len(objectKeyChunks)-2]
 			versions = append(versions, versionNumber)
 			c.Ui.Output(fmt.Sprintf("[%d]\t%s\t\t%s", idx, versionNumber, availablePackages[idx].LastModified.Format(time.UnixDate)))
 		}
@@ -271,8 +311,8 @@ func (c *CreateCommand) Run(args []string) int {
 
 		//Get the userdata template from S3 for instance startup using cloud-init
 		s3params := &s3.GetObjectInput{
-			Bucket:                     aws.String("hello-deploy"), // Required
-			Key:                        aws.String("userdata/default_userdata.sh"),  // Required
+			Bucket: aws.String("hello-deploy"),                 // Required
+			Key:    aws.String("userdata/default_userdata.sh"), // Required
 		}
 		resp, err := s3Service.GetObject(s3params)
 
@@ -289,6 +329,7 @@ func (c *CreateCommand) Run(args []string) int {
 		//do token replacement
 		userData = strings.Replace(userData, "{app_version}", amiVersion, -1)
 		userData = strings.Replace(userData, "{app_name}", selectedApp.name, -1)
+		userData = strings.Replace(userData, "{package_path}", selectedApp.packagePath, -1)
 		userData = strings.Replace(userData, "{default_region}", "us-east-1", -1)
 		userData = strings.Replace(userData, "{java_version}", strconv.Itoa(selectedApp.javaVersion), -1)
 
@@ -338,8 +379,8 @@ func (c *CreateCommand) Run(args []string) int {
 	createLCParams := &autoscaling.CreateLaunchConfigurationInput{
 		LaunchConfigurationName:  aws.String(launchConfigName), // Required
 		AssociatePublicIpAddress: aws.Bool(true),
-		IamInstanceProfile: aws.String(selectedApp.instanceProfile),
-		ImageId:            aws.String(amiId),
+		IamInstanceProfile:       aws.String(selectedApp.instanceProfile),
+		ImageId:                  aws.String(amiId),
 		InstanceMonitoring: &autoscaling.InstanceMonitoring{
 			Enabled: aws.Bool(true),
 		},
@@ -348,8 +389,10 @@ func (c *CreateCommand) Run(args []string) int {
 		SecurityGroups: []*string{
 			aws.String(selectedApp.sg), // Required
 		},
-		UserData:  aws.String(userData),
+		UserData: aws.String(userData),
 	}
+
+	deployAction := NewDeployAction("create", selectedApp.name, launchConfigName, 0)
 
 	c.Ui.Info(fmt.Sprint("Creating Launch Configuration with the following parameters:"))
 	c.Ui.Info(fmt.Sprint(createLCParams))
@@ -378,6 +421,7 @@ func (c *CreateCommand) Run(args []string) int {
 		return 1
 	}
 
+	c.Notifier.Notify(deployAction)
 	c.Ui.Output(fmt.Sprintln("Launch Configuration created."))
 
 	return 0

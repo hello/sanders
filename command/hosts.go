@@ -4,17 +4,18 @@ import (
 	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/mitchellh/cli"
 	"io/ioutil"
 	"os"
 	"strings"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type HostsCommand struct {
-	Ui cli.ColoredUi
+	Ui       cli.ColoredUi
+	Notifier BasicNotifier
 }
 
 func (c *HostsCommand) Help() string {
@@ -32,7 +33,7 @@ func (c *HostsCommand) Run(args []string) int {
 		return 1
 	}
 
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers"}
+	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "sense-firehose", "suripu-queue", "messeji"}
 
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),

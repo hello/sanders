@@ -3,15 +3,16 @@ package command
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/mitchellh/cli"
 	"strings"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type StatusCommand struct {
-	Ui cli.ColoredUi
+	Ui       cli.ColoredUi
+	Notifier BasicNotifier
 }
 
 func (c *StatusCommand) Help() string {
@@ -28,7 +29,7 @@ func (c *StatusCommand) Run(args []string) int {
 	service := elb.New(session.New(), config)
 	ec2Service := ec2.New(session.New(), config)
 
-	for _, elbName := range []string{"suripu-service-prod", "suripu-app-prod", "suripu-app-canary", "suripu-admin-prod"} {
+	for _, elbName := range []string{"suripu-service-prod", "suripu-app-prod", "suripu-app-canary", "suripu-admin-prod", "messeji-prod"} {
 		c.Ui.Info(fmt.Sprintf("ELB: %s", elbName))
 
 		req := &elb.DescribeInstanceHealthInput{
@@ -93,7 +94,7 @@ func (c *StatusCommand) Run(args []string) int {
 			imageVersion := ""
 			if lcNames[*state.InstanceId] != "" {
 				parts = strings.SplitAfterN(lcNames[*state.InstanceId], "-", 4)
-				imageVersion = parts[3]
+				imageVersion = parts[len(parts)-1]
 			} else {
 				parts = strings.SplitAfterN(amiName, "-", 4)
 				imageVersion = parts[2]

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+SANDERS_PATH=$GOPATH'/src/github.com/hello/sanders'
+CURR_PATH=`pwd`
+
+cd $SANDERS_PATH
+git checkout master
+git pull origin master
+go install
+ls -il `which sanders`
+
+cd $CURR_PATH

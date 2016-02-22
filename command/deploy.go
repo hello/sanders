@@ -3,12 +3,12 @@ package command
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
 	"sort"
 	"strconv"
 	"strings"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type ByLCTime []*autoscaling.LaunchConfiguration
@@ -24,7 +24,8 @@ func (s ByLCTime) Less(i, j int) bool {
 }
 
 type DeployCommand struct {
-	Ui cli.ColoredUi
+	Ui       cli.ColoredUi
+	Notifier BasicNotifier
 }
 
 func (c *DeployCommand) Help() string {
@@ -50,7 +51,6 @@ Plan:
 	desiredCapacity := int64(1)
 
 	c.Ui.Output("Which app would you like to deploy?")
-
 
 	for idx, app := range suripuApps {
 		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
@@ -163,35 +163,37 @@ Plan:
 				MaxSize:                 &maxSize,
 			}
 
+			deployAction := NewDeployAction("deploy", asgName, lcName, *updateReq.DesiredCapacity)
 			c.Ui.Info("Executing plan:")
 			c.Ui.Info(fmt.Sprintf(plan, asgName, lcName, *updateReq.DesiredCapacity))
+
 			_, err = service.UpdateAutoScalingGroup(updateReq)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s", err))
 				return 1
 			}
 
-			//Tag the ASG so version number can be passed to instance
-			params := &autoscaling.CreateOrUpdateTagsInput{
-				Tags: []*autoscaling.Tag{ // Required
-					{ // Required
-						Key:               aws.String("Launch Configuration"), // Required
-						PropagateAtLaunch: aws.Bool(true),
-						ResourceId:        &asgName,
-						ResourceType:      aws.String("auto-scaling-group"),
-						Value:             &lcName,
-					},
-				},
-			}
-			resp, err := service.CreateOrUpdateTags(params)
+			c.Notifier.Notify(deployAction)
 
+			respTag, err := c.updateASGTag(service, asgName, "Launch Configuration", lcName, true)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s", err))
 				return 1
 			}
 
-			if resp != nil {
+			if respTag != nil {
 				c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
+			}
+
+			appNameEnv := fmt.Sprintf("%s-prod", appName)
+			respTag, err = c.updateASGTag(service, asgName, "Name", appNameEnv, true)
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("%s", err))
+				return 1
+			}
+
+			if respTag != nil {
+				c.Ui.Info("Added 'Name' tag to ASG.")
 			}
 
 			c.Ui.Info("Update autoscaling group request acknowledged")
@@ -202,6 +204,25 @@ Plan:
 
 	c.Ui.Info("Run: `sanders status` to monitor servers being attached to ELB")
 	return 0
+}
+
+func (c *DeployCommand) updateASGTag(service *autoscaling.AutoScaling, asgName string, tagName string, tagValue string, propagate bool) (*autoscaling.CreateOrUpdateTagsOutput, error){
+
+	//Tag the ASG so version number can be passed to instance
+	params := &autoscaling.CreateOrUpdateTagsInput{
+		Tags: []*autoscaling.Tag{// Required
+			{// Required
+				Key:               aws.String(tagName), // Required
+				PropagateAtLaunch: aws.Bool(propagate),
+				ResourceId:        aws.String(asgName),
+				ResourceType:      aws.String("auto-scaling-group"),
+				Value:             aws.String(tagValue),
+			},
+		},
+	}
+	resp, err := service.CreateOrUpdateTags(params)
+
+	return resp, err
 }
 
 func (c *DeployCommand) Synopsis() string {

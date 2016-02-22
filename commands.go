@@ -1,11 +1,15 @@
 package main
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/hello/sanders/command"
 	"github.com/hello/sanders/ui"
 	"github.com/mitchellh/cli"
 	"os"
 	"os/signal"
+	"fmt"
 )
 
 // Commands is the mapping of all the available Serf commands.
@@ -16,7 +20,9 @@ var (
 )
 
 func init() {
-
+	config := &aws.Config{
+		Region: aws.String("us-east-1"),
+	}
 	cui := cli.ColoredUi{
 		InfoColor:  cli.UiColorGreen,
 		ErrorColor: cli.UiColorRed,
@@ -27,46 +33,66 @@ func init() {
 		},
 	}
 
+	iamService := iam.New(session.New(), config)
+	getUserReq := &iam.GetUserInput{}
+
+	resp, err := iamService.GetUser(getUserReq)
+
+	if err != nil {
+		cui.Ui.Error(fmt.Sprintln(err.Error()))
+		return
+	}
+
+	user := *resp.User.UserName
 	cpui := ui.ProgressUi{
 		Writer: os.Stdout,
 		Ui:     cui,
 	}
 
+	notifier := command.NewSlackNotifier(user)
+
 	Commands = map[string]cli.CommandFactory{
 
 		"status": func() (cli.Command, error) {
 			return &command.StatusCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"sunset": func() (cli.Command, error) {
 			return &command.SunsetCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"deploy": func() (cli.Command, error) {
 			return &command.DeployCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"hosts": func() (cli.Command, error) {
 			return &command.HostsCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"canary": func() (cli.Command, error) {
 			return &command.CanaryCommand{
-				Ui: cpui,
+				Ui:       cpui,
+				Notifier: notifier,
 			}, nil
 		},
 		"confirm": func() (cli.Command, error) {
 			return &command.ConfirmCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 		"create": func() (cli.Command, error) {
 			return &command.CreateCommand{
-				Ui: cui,
+				Ui:       cui,
+				Notifier: notifier,
 			}, nil
 		},
 	}
