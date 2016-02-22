@@ -3,6 +3,8 @@ package command
 import (
 	"bytes"
 	"encoding/base64"
+	"crypto/sha1"
+	"io"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -27,6 +29,9 @@ type suripuApp struct {
 	javaVersion           int
 	packagePath			  string
 }
+
+//This hash should be updated anytime default_userdata.sh is updated on S3
+var expectedUserDataHash = "af45382d7e42b97a15708cc615a67b879cbabd9e"
 
 var suripuApps []suripuApp = []suripuApp{
 	suripuApp{
@@ -328,6 +333,16 @@ func (c *CreateCommand) Run(args []string) int {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resp.Body)
 		userData = buf.String()
+
+		//Verify checksum of userData
+		hash := sha1.New()
+		io.WriteString(hash, userData)
+		userDataHash := fmt.Sprintf("%x", hash.Sum(nil))
+
+		if userDataHash != expectedUserDataHash {
+			c.Ui.Error("UserData hash from S3 does not match the one expected by your version of Sanders. Please correct this before proceeding.")
+			return 0
+		}
 
 		//do token replacement
 		userData = strings.Replace(userData, "{app_version}", amiVersion, -1)
