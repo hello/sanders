@@ -61,7 +61,7 @@ var suripuApps []suripuApp = []suripuApp{
 		instanceProfile:       "suripu-workers",
 		keyName:               "vpc-prod-2016-02",
 		targetDesiredCapacity: 2,
-		usesPacker:            true,
+		usesPacker:            false,
 		javaVersion:           7,
 		packagePath:		   "com/hello/suripu"},
 	suripuApp{
