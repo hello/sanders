@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -9,7 +10,6 @@ import (
 	"github.com/mitchellh/cli"
 	"os"
 	"os/signal"
-	"fmt"
 )
 
 // Commands is the mapping of all the available Serf commands.
@@ -93,6 +93,12 @@ func init() {
 			return &command.CreateCommand{
 				Ui:       cui,
 				Notifier: notifier,
+			}, nil
+		},
+		"version": func() (cli.Command, error) {
+			return &command.VersionCommand{
+				Ui:        cui,
+				GitCommit: GitCommit,
 			}, nil
 		},
 	}
