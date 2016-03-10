@@ -23,6 +23,13 @@ func (s ByLCTime) Less(i, j int) bool {
 	return s[i].CreatedTime.Unix() < s[j].CreatedTime.Unix()
 }
 
+type tag struct {
+	asgName   string
+	tagName   string
+	tagValue  string
+	propagate bool
+}
+
 type DeployCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
@@ -175,25 +182,41 @@ Plan:
 
 			c.Notifier.Notify(deployAction)
 
-			respTag, err := c.updateASGTag(service, asgName, "Launch Configuration", lcName, true)
+			tags := []tag{
+				{
+					asgName:   asgName,
+					tagName:   "Launch Configuration",
+					tagValue:  lcName,
+					propagate: true,
+				},
+				{
+					asgName:   asgName,
+					tagName:   "Name",
+					tagValue:  fmt.Sprintf("%s-prod", appName),
+					propagate: true,
+				},
+				{
+					asgName:   asgName,
+					tagName:   "Env",
+					tagValue:  "prod",
+					propagate: true,
+				},
+				{
+					asgName:   asgName,
+					tagName:   "Service",
+					tagValue:  appName,
+					propagate: true,
+				},
+			}
+
+			respTag, err := c.updateASGTags(service, tags)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s", err))
 				return 1
 			}
 
 			if respTag != nil {
-				c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
-			}
-
-			appNameEnv := fmt.Sprintf("%s-prod", appName)
-			respTag, err = c.updateASGTag(service, asgName, "Name", appNameEnv, true)
-			if err != nil {
-				c.Ui.Error(fmt.Sprintf("%s", err))
-				return 1
-			}
-
-			if respTag != nil {
-				c.Ui.Info("Added 'Name' tag to ASG.")
+				c.Ui.Info("Tags successfully updated.")
 			}
 
 			c.Ui.Info("Update autoscaling group request acknowledged")
@@ -206,19 +229,25 @@ Plan:
 	return 0
 }
 
-func (c *DeployCommand) updateASGTag(service *autoscaling.AutoScaling, asgName string, tagName string, tagValue string, propagate bool) (*autoscaling.CreateOrUpdateTagsOutput, error){
+func (c *DeployCommand) updateASGTags(service *autoscaling.AutoScaling, tagsToUpdate []tag) (*autoscaling.CreateOrUpdateTagsOutput, error) {
+
+	tags := make([]*autoscaling.Tag, 0)
+
+	for _, tag := range tagsToUpdate {
+		awsTag := &autoscaling.Tag{ // Required
+			Key:               aws.String(tag.tagName), // Required
+			PropagateAtLaunch: aws.Bool(tag.propagate),
+			ResourceId:        aws.String(tag.asgName),
+			ResourceType:      aws.String("auto-scaling-group"),
+			Value:             aws.String(tag.tagValue),
+		}
+
+		tags = append(tags, awsTag)
+	}
 
 	//Tag the ASG so version number can be passed to instance
 	params := &autoscaling.CreateOrUpdateTagsInput{
-		Tags: []*autoscaling.Tag{// Required
-			{// Required
-				Key:               aws.String(tagName), // Required
-				PropagateAtLaunch: aws.Bool(propagate),
-				ResourceId:        aws.String(asgName),
-				ResourceType:      aws.String("auto-scaling-group"),
-				Value:             aws.String(tagValue),
-			},
-		},
+		Tags: tags,
 	}
 	resp, err := service.CreateOrUpdateTags(params)
 
