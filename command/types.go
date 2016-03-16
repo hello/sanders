@@ -64,6 +64,7 @@ func (n SlackNotifier) Notify(action *DeployAction) error {
 		AuthorName: n.username,
 		Fields:     fields,
 		Color:      actionColors[action.CmdType],
+		Fallback: 	action.FallbackString(),
 	}
 
 	payload := &Payload{
@@ -113,4 +114,10 @@ func (d *DeployAction) String() string {
 AppName: *%s*
 LC: *%s*
 NumServers: *%d*`, d.CmdType, d.AppName, d.LC, d.NumServers)
+}
+
+func (d *DeployAction) FallbackString() string {
+	return fmt.Sprintf(`%s App: %s
+LC: %s
+NumServers: %d`, d.CmdType, d.AppName, d.LC, d.NumServers)
 }

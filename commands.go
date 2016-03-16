@@ -1,15 +1,16 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/hello/sanders/command"
 	"github.com/hello/sanders/ui"
 	"github.com/mitchellh/cli"
-	"os"
-	"os/signal"
-	"fmt"
 )
 
 // Commands is the mapping of all the available Serf commands.
