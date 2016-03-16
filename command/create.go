@@ -91,9 +91,9 @@ var suripuApps []suripuApp = []suripuApp{
 	suripuApp{
 		name:                  "hello-time",
 		sg:                    "sg-5c371525",
-		instanceType:          "t2.micro",
+		instanceType:          "t2.nano",
 		instanceProfile:       "hello-time",
-		targetDesiredCapacity: 1,
+		targetDesiredCapacity: 2,
 		usesPacker:            false,
 		javaVersion:           7,
 		packagePath:		   "com/hello/time"},
