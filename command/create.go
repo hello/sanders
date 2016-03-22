@@ -100,7 +100,7 @@ var suripuApps []suripuApp = []suripuApp{
 	suripuApp{
 		name:                  "suripu-queue",
 		sg:                    "sg-3e55ba46",
-		instanceType:          "c4.large",
+		instanceType:          "c3.large",
 		instanceProfile:       "suripu-queue",
 		targetDesiredCapacity: 1,
 		usesPacker:            true,
