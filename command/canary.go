@@ -8,6 +8,8 @@ import (
 	"github.com/hello/sanders/ui"
 	"strings"
 	"time"
+	"strconv"
+	"sort"
 )
 
 const plan = `
@@ -36,37 +38,74 @@ func (c *CanaryCommand) Run(args []string) int {
 	}
 	service := autoscaling.New(session.New(), config)
 
-	version, err := c.Ui.Ask("Which version do you want to deploy to canary (ex 8.8.8): ")
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error reading version #: %s", err))
+	//desiredCapacity := int64(1)
+
+	c.Ui.Output("Which app would you like to deploy?")
+
+	for idx, app := range suripuApps {
+		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
+	}
+
+	appSel, err := c.Ui.Ask("Select an app #: ")
+	appIdx, _ := strconv.Atoi(appSel)
+
+	if err != nil || appIdx >= len(suripuApps) {
+		c.Ui.Error(fmt.Sprintf("Incorrect app selection: %s\n", err))
 		return 1
 	}
 
-	c.Ui.Info(fmt.Sprintf("--> : %s", version))
-
-	possibleLC := fmt.Sprintf("suripu-app-prod-%s", version)
-
-	max := int64(3)
-	describeLCReq := &autoscaling.DescribeLaunchConfigurationsInput{
-		LaunchConfigurationNames: []*string{&possibleLC},
-		MaxRecords:               &max,
+	lcParams := &autoscaling.DescribeLaunchConfigurationsInput{
+		MaxRecords: aws.Int64(100),
 	}
 
-	lcsResp, err := service.DescribeLaunchConfigurations(describeLCReq)
-	if err != nil {
+	pageNum := 0
+	appPossibleLCs := make([]*autoscaling.LaunchConfiguration, 0)
+
+	pageErr := service.DescribeLaunchConfigurationsPages(lcParams, func(page *autoscaling.DescribeLaunchConfigurationsOutput, lastPage bool) bool {
+		pageNum++
+		if len(page.LaunchConfigurations) == 0 {
+			c.Ui.Error(fmt.Sprintf("No launch configuration found for app: %s", suripuApps[appIdx].name))
+			return false
+		}
+
+		for _, stuff := range page.LaunchConfigurations {
+			if strings.HasPrefix(*stuff.LaunchConfigurationName, suripuApps[appIdx].name) {
+				appPossibleLCs = append(appPossibleLCs, stuff)
+			}
+		}
+		return pageNum <= 2 //Allow for 200 possible LCs
+	})
+
+	if pageErr != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
 		return 1
 	}
 
-	if len(lcsResp.LaunchConfigurations) == 0 {
-		c.Ui.Error(fmt.Sprintf("No launch configuration found for version: %s", version))
+	c.Ui.Info("Latest 5 Launch Configurations")
+	c.Ui.Info(" #\tName:                               \tCreated At:")
+	c.Ui.Info("---|---------------------------------------|---------------")
+	sort.Sort(sort.Reverse(ByLCTime(appPossibleLCs)))
+
+	numLCs := Min(len(appPossibleLCs), 5)
+	for lcIdx := 0; lcIdx < numLCs; lcIdx++ {
+		c.Ui.Info(fmt.Sprintf("[%d]\t%-36s\t%s", lcIdx, *appPossibleLCs[lcIdx].LaunchConfigurationName, appPossibleLCs[lcIdx].CreatedTime.String()))
+	}
+
+	c.Ui.Output("")
+	lc, err := c.Ui.Ask("Select a launch configuration (LC) #: ")
+	lcNum, _ := strconv.Atoi(lc)
+
+	if err != nil || lcNum >= len(appPossibleLCs) {
+		c.Ui.Error(fmt.Sprintf("Error reading app #: %s", err))
 		return 1
 	}
 
-	lcName := *lcsResp.LaunchConfigurations[0].LaunchConfigurationName
+	lcName := *appPossibleLCs[lcNum].LaunchConfigurationName
 	c.Ui.Info(fmt.Sprintf("--> proceeding with LC : %s", lcName))
 
-	groupnames := []*string{aws.String("suripu-app-rpod-canary")}
+	appName := suripuApps[appIdx].name
+
+	groupnames := []*string{aws.String(fmt.Sprintf("%s-prod-canary", appName))}
 
 	describeASGreq := &autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: groupnames,
@@ -78,8 +117,15 @@ func (c *CanaryCommand) Run(args []string) int {
 		return 1
 	}
 
+	if len(describeASGResp.AutoScalingGroups) < 1 {
+		c.Ui.Error(fmt.Sprintf("There doesn't appear to be an ASG for %s. Exiting...", appName))
+		return 1
+	}
+
 	asg := describeASGResp.AutoScalingGroups[0]
 	asgName := *asg.AutoScalingGroupName
+
+	c.Ui.Info(fmt.Sprintf("LC: %s\nASG: %s", lcName, asgName))
 
 	// Set to 0 first to kill the instance
 	if len(asg.Instances) == 1 {

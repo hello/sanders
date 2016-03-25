@@ -165,7 +165,7 @@ func (c *CreateCommand) Run(args []string) int {
 	s3KeyService := s3.New(session.New(), s3KeyConfig)
 	ec2Service := ec2.New(session.New(), config)
 
-	c.Ui.Output("Which environment are we building for?")
+	c.Ui.Output("Which environment are we creating a Launch Config for?")
 
 	environments := []string{"prod", "canary"}
 
@@ -173,7 +173,11 @@ func (c *CreateCommand) Run(args []string) int {
 		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, env))
 	}
 
-	envSel, err := c.Ui.Ask("Select an environment #: ")
+	envSel, err := c.Ui.Ask("Select an environment: [0]")
+	if envSel == "" {
+		envSel = "0"
+	}
+
 	envIdx, _ := strconv.Atoi(envSel)
 
 	environment := environments[envIdx]
@@ -182,6 +186,8 @@ func (c *CreateCommand) Run(args []string) int {
 		c.Ui.Error(fmt.Sprintf("Incorrect environment selection: %s\n", err))
 		return 1
 	}
+
+	c.Ui.Output(fmt.Sprintf("Creating LC for %s environment.\n", environment))
 
 	c.Ui.Output("Which app are we building for?")
 
