@@ -8,6 +8,8 @@ import (
 	"os"
 )
 
+var GitCommit string
+
 func main() {
 	os.Exit(realMain())
 }

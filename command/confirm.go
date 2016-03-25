@@ -112,7 +112,7 @@ Plan:
 
 	for _, asg := range describeASGResp.AutoScalingGroups {
 		asgName := *asg.AutoScalingGroupName
-		if *asg.LaunchConfigurationName == lcName {
+		if *asg.LaunchConfigurationName == lcName && *asg.DesiredCapacity != desiredCapacity {
 
 			c.Ui.Warn(fmt.Sprintf("--- # of servers to deploy: %d", *asg.DesiredCapacity))
 			c.Ui.Info(fmt.Sprintf("+++ # of servers to deploy: %d", desiredCapacity))
