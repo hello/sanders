@@ -129,7 +129,7 @@ func (c *CanaryCommand) Run(args []string) int {
 
 	// Set to 0 first to kill the instance
 	if len(asg.Instances) == 1 {
-		_, err = c.update(service, 0, asgName, lcName)
+		_, err = c.update(service, 0, asgName, lcName, appName)
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Could not update LC: %s", err))
 			return 1
@@ -146,7 +146,7 @@ func (c *CanaryCommand) Run(args []string) int {
 	}
 
 	deployAction := NewDeployAction("canary", asgName, lcName, 1)
-	_, err = c.update(service, 1, asgName, lcName)
+	_, err = c.update(service, 1, asgName, lcName, appName)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Could not update LC: %s", err))
 		return 1
@@ -159,7 +159,7 @@ func (c *CanaryCommand) Run(args []string) int {
 	return 0
 }
 
-func (c *CanaryCommand) update(service *autoscaling.AutoScaling, desiredCapacity int64, asgName, lcName string) (*autoscaling.UpdateAutoScalingGroupOutput, error) {
+func (c *CanaryCommand) update(service *autoscaling.AutoScaling, desiredCapacity int64, asgName, lcName, appName string) (*autoscaling.UpdateAutoScalingGroupOutput, error) {
 	updateReq := &autoscaling.UpdateAutoScalingGroupInput{
 		DesiredCapacity:         &desiredCapacity,
 		AutoScalingGroupName:    aws.String(asgName),
@@ -188,7 +188,7 @@ func (c *CanaryCommand) update(service *autoscaling.AutoScaling, desiredCapacity
 			c.Ui.Info("Added 'Launch Configuration' tag to ASG.")
 		}
 
-		respTag, err = c.updateASGTag(service, asgName, "Name", "suripu-app-canary", true)
+		respTag, err = c.updateASGTag(service, asgName, "Name", fmt.Sprintf("%s-canary", appName), true)
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("%s", err))
 			return resp, err
