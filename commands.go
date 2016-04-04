@@ -95,6 +95,12 @@ func init() {
 				Notifier: notifier,
 			}, nil
 		},
+		"monitor": func() (cli.Command, error) {
+			return &command.MonitorCommand{
+				Ui: cui,
+				Notifier: notifier,
+			}, nil
+		},
 		"version": func() (cli.Command, error) {
 			return &command.VersionCommand{
 				Ui:        cui,

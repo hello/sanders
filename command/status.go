@@ -84,7 +84,7 @@ func (c *StatusCommand) Run(args []string) int {
 
 	for _, elb := range elbs {
 		status, _ := results[elb]
-		c.printStatus(status)
+		printStatus(c.Ui, status)
 	}
 
 	close(statuses)
@@ -184,35 +184,35 @@ func elbStatus(elbName string, service *elb.ELB, ec2Service *ec2.EC2) *Status {
 	return status
 }
 
-func (c *StatusCommand) printStatus(status *Status) {
-	c.Ui.Info(status.ElbName)
+func printStatus(ui cli.ColoredUi, status *Status) {
+	ui.Info(status.ElbName)
 	for _, status := range status.Statuses {
 
 		if status.State == "InService" {
-			c.Ui.Info(fmt.Sprintf("\tVersion: %s", status.Version))
-			c.Ui.Info(fmt.Sprintf("\tID: %s", status.InstanceId))
-			c.Ui.Info(fmt.Sprintf("\tState: %s", status.State))
-			c.Ui.Info(fmt.Sprintf("\tLaunched: %s", status.Launched))
-			c.Ui.Info(fmt.Sprintf("\tHostname: %s", status.Hostname))
+			ui.Info(fmt.Sprintf("\tVersion: %s", status.Version))
+			ui.Info(fmt.Sprintf("\tID: %s", status.InstanceId))
+			ui.Info(fmt.Sprintf("\tState: %s", status.State))
+			ui.Info(fmt.Sprintf("\tLaunched: %s", status.Launched))
+			ui.Info(fmt.Sprintf("\tHostname: %s", status.Hostname))
 
 		} else if status.Reason == "Instance is in pending state" {
-			c.Ui.Warn(fmt.Sprintf("\tVersion: %s", status.Version))
-			c.Ui.Warn(fmt.Sprintf("\tID: %s", status.InstanceId))
-			c.Ui.Warn(fmt.Sprintf("\tState: %s", status.State))
-			c.Ui.Warn(fmt.Sprintf("\tReason: %s", status.Reason))
-			c.Ui.Warn(fmt.Sprintf("\tDescription: %s", status.Description))
-			c.Ui.Warn(fmt.Sprintf("\tLaunched: %s", status.Launched))
-			c.Ui.Warn(fmt.Sprintf("\tHostname: %s", status.Hostname))
+			ui.Warn(fmt.Sprintf("\tVersion: %s", status.Version))
+			ui.Warn(fmt.Sprintf("\tID: %s", status.InstanceId))
+			ui.Warn(fmt.Sprintf("\tState: %s", status.State))
+			ui.Warn(fmt.Sprintf("\tReason: %s", status.Reason))
+			ui.Warn(fmt.Sprintf("\tDescription: %s", status.Description))
+			ui.Warn(fmt.Sprintf("\tLaunched: %s", status.Launched))
+			ui.Warn(fmt.Sprintf("\tHostname: %s", status.Hostname))
 		} else {
-			c.Ui.Error(fmt.Sprintf("\tVersion: %s", status.Version))
-			c.Ui.Error(fmt.Sprintf("\tID: %s", status.InstanceId))
-			c.Ui.Error(fmt.Sprintf("\tState: %s", status.State))
-			c.Ui.Error(fmt.Sprintf("\tReason: %s", status.Reason))
-			c.Ui.Error(fmt.Sprintf("\tDescription: %s", status.Description))
-			c.Ui.Error(fmt.Sprintf("\tLaunched: %s", status.Launched))
-			c.Ui.Error(fmt.Sprintf("\tHostname: %s", status.Hostname))
+			ui.Error(fmt.Sprintf("\tVersion: %s", status.Version))
+			ui.Error(fmt.Sprintf("\tID: %s", status.InstanceId))
+			ui.Error(fmt.Sprintf("\tState: %s", status.State))
+			ui.Error(fmt.Sprintf("\tReason: %s", status.Reason))
+			ui.Error(fmt.Sprintf("\tDescription: %s", status.Description))
+			ui.Error(fmt.Sprintf("\tLaunched: %s", status.Launched))
+			ui.Error(fmt.Sprintf("\tHostname: %s", status.Hostname))
 		}
-		c.Ui.Output("")
+		ui.Output("")
 	}
 }
 
