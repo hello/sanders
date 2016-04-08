@@ -165,6 +165,30 @@ func (c *CreateCommand) Run(args []string) int {
 	s3KeyService := s3.New(session.New(), s3KeyConfig)
 	ec2Service := ec2.New(session.New(), config)
 
+	c.Ui.Output("Which environment are we creating a Launch Config for?")
+
+	environments := []string{"prod", "canary"}
+
+	for idx, env := range environments {
+		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, env))
+	}
+
+	envSel, err := c.Ui.Ask("Select an environment: [0]")
+	if envSel == "" {
+		envSel = "0"
+	}
+
+	envIdx, _ := strconv.Atoi(envSel)
+
+	environment := environments[envIdx]
+
+	if err != nil || envIdx >= len(environments) {
+		c.Ui.Error(fmt.Sprintf("Incorrect environment selection: %s\n", err))
+		return 1
+	}
+
+	c.Ui.Output(fmt.Sprintf("Creating LC for %s environment.\n", environment))
+
 	c.Ui.Output("Which app are we building for?")
 
 	for idx, app := range suripuApps {
@@ -264,8 +288,13 @@ func (c *CreateCommand) Run(args []string) int {
 
 	} else {
 
-		pkgPrefix := fmt.Sprintf("packages/%s/%s/", selectedApp.packagePath, selectedApp.name)
+		canaryPath := ""
+		if environment == "canary" {
+			canaryPath = "canary/"
+		}
+		pkgPrefix := fmt.Sprintf("packages/%s/%s/%s", selectedApp.packagePath, selectedApp.name, canaryPath)
 
+		fmt.Println(pkgPrefix) //TODO: REMOVE
 		c.Ui.Output("")
 		//retrieve package list from S3 for selectedApp
 		s3ListParams := &s3.ListObjectsInput{
@@ -345,6 +374,7 @@ func (c *CreateCommand) Run(args []string) int {
 		userData = strings.Replace(userData, "{app_version}", amiVersion, -1)
 		userData = strings.Replace(userData, "{app_name}", selectedApp.name, -1)
 		userData = strings.Replace(userData, "{package_path}", selectedApp.packagePath, -1)
+		userData = strings.Replace(userData, "{canary_path}", canaryPath, -1)
 		userData = strings.Replace(userData, "{default_region}", "us-east-1", -1)
 		userData = strings.Replace(userData, "{java_version}", strconv.Itoa(selectedApp.javaVersion), -1)
 
@@ -357,7 +387,7 @@ func (c *CreateCommand) Run(args []string) int {
 	c.Ui.Info(fmt.Sprintf("You selected %s\n", amiName))
 	c.Ui.Info(fmt.Sprintf("Version Number: %s\n", amiVersion))
 
-	launchConfigName := fmt.Sprintf("%s-prod-%s", selectedApp.name, amiVersion)
+	launchConfigName := fmt.Sprintf("%s-%s-%s", selectedApp.name, environment, amiVersion)
 
 	//Create deployment-specific KeyPair
 
@@ -376,7 +406,7 @@ func (c *CreateCommand) Run(args []string) int {
 	c.Ui.Info(fmt.Sprintf("Created KeyPair: %s. \n", *keyPairResp.KeyName))
 
 	//Upload key to S3
-	key := fmt.Sprintf("/prod/%s/%s.pem", selectedApp.name, *keyPairResp.KeyName)
+	key := fmt.Sprintf("/%s/%s/%s.pem", environment, selectedApp.name, *keyPairResp.KeyName)
 
 	uploadResult, err := s3KeyService.PutObject(&s3.PutObjectInput{
 		Body:   	strings.NewReader(*keyPairResp.KeyMaterial),
