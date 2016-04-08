@@ -149,11 +149,21 @@ type CreateCommand struct {
 }
 
 func (c *CreateCommand) Help() string {
-	helpText := `Usage: create`
+	helpText := `Usage: create [-e]
+	-e,--emergency		Create specially named Launch Config for emergency situations ONLY.`
 	return strings.TrimSpace(helpText)
 }
 
 func (c *CreateCommand) Run(args []string) int {
+
+	emergency := false
+	//Check for --emergency commandline argument
+	for _, arg := range args {
+		if arg == "-e" || arg == "--emergency" {
+			emergency = true
+		}
+	}
+
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
@@ -357,7 +367,12 @@ func (c *CreateCommand) Run(args []string) int {
 	c.Ui.Info(fmt.Sprintf("You selected %s\n", amiName))
 	c.Ui.Info(fmt.Sprintf("Version Number: %s\n", amiVersion))
 
-	launchConfigName := fmt.Sprintf("%s-prod-%s", selectedApp.name, amiVersion)
+	emergencyText := ""
+	if emergency {
+		emergencyText = "-emergency"
+	}
+
+	launchConfigName := fmt.Sprintf("%s-prod-%s%s", selectedApp.name, amiVersion, emergencyText)
 
 	//Create deployment-specific KeyPair
 
@@ -483,7 +498,7 @@ func Cleanup(keyName string, objectName string, ui cli.ColoredUi ) bool {
 }
 
 func (c *CreateCommand) Synopsis() string {
-	return "Creates a launch configuration based on selected parameters. (Only for boxfuse-created AMIs)"
+	return "Creates a launch configuration based on selected parameters."
 }
 
 func Min(x, y int) int {
