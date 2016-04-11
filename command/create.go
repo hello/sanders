@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"flag"
 )
 
 type suripuApp struct {
@@ -149,11 +150,24 @@ type CreateCommand struct {
 }
 
 func (c *CreateCommand) Help() string {
-	helpText := `Usage: create`
+	helpText := `Usage: create [--emergency]
+	--emergency		Create specially named Launch Config for emergency situations ONLY.`
 	return strings.TrimSpace(helpText)
 }
 
 func (c *CreateCommand) Run(args []string) int {
+
+	var isEmergency bool
+
+	cmdFlags := flag.NewFlagSet("create", flag.ContinueOnError)
+	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }
+
+	cmdFlags.BoolVar(&isEmergency, "emergency", false, "emergency")
+	if err := cmdFlags.Parse(args); err != nil {
+		c.Ui.Error(fmt.Sprintf("%v", err))
+		return 1
+	}
+
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
@@ -387,7 +401,12 @@ func (c *CreateCommand) Run(args []string) int {
 	c.Ui.Info(fmt.Sprintf("You selected %s\n", amiName))
 	c.Ui.Info(fmt.Sprintf("Version Number: %s\n", amiVersion))
 
-	launchConfigName := fmt.Sprintf("%s-%s-%s", selectedApp.name, environment, amiVersion)
+	emergencyText := ""
+	if isEmergency {
+		emergencyText = "-emergency"
+	}
+
+	launchConfigName := fmt.Sprintf("%s-%s-%s%s", selectedApp.name, environment, amiVersion, emergencyText)
 
 	//Create deployment-specific KeyPair
 
@@ -513,7 +532,7 @@ func Cleanup(keyName string, objectName string, ui cli.ColoredUi ) bool {
 }
 
 func (c *CreateCommand) Synopsis() string {
-	return "Creates a launch configuration based on selected parameters. (Only for boxfuse-created AMIs)"
+	return "Creates a launch configuration based on selected parameters."
 }
 
 func Min(x, y int) int {

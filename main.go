@@ -38,6 +38,7 @@ func realMain() int {
 	}
 
 	cli := &cli.CLI{
+		Name: "sanders",
 		Args:     args,
 		Commands: Commands,
 	}
