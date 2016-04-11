@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"flag"
 )
 
 type suripuApp struct {
@@ -149,19 +150,21 @@ type CreateCommand struct {
 }
 
 func (c *CreateCommand) Help() string {
-	helpText := `Usage: create [-e]
-	-e,--emergency		Create specially named Launch Config for emergency situations ONLY.`
+	helpText := `Usage: create [--emergency]
+	--emergency		Create specially named Launch Config for emergency situations ONLY.`
 	return strings.TrimSpace(helpText)
 }
 
 func (c *CreateCommand) Run(args []string) int {
 
-	emergency := false
-	//Check for --emergency commandline argument
-	for _, arg := range args {
-		if arg == "-e" || arg == "--emergency" {
-			emergency = true
-		}
+	var isEmergency bool
+
+	cmdFlags := flag.NewFlagSet("create", flag.ContinueOnError)
+	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }
+
+	cmdFlags.BoolVar(&isEmergency, "emergency", false, "emergency")
+	if err := cmdFlags.Parse(args); err != nil {
+		return 1
 	}
 
 	config := &aws.Config{
@@ -397,7 +400,12 @@ func (c *CreateCommand) Run(args []string) int {
 	c.Ui.Info(fmt.Sprintf("You selected %s\n", amiName))
 	c.Ui.Info(fmt.Sprintf("Version Number: %s\n", amiVersion))
 
-	launchConfigName := fmt.Sprintf("%s-%s-%s", selectedApp.name, environment, amiVersion)
+	emergencyText := ""
+	if isEmergency {
+		emergencyText = "-emergency"
+	}
+
+	launchConfigName := fmt.Sprintf("%s-%s-%s%s", selectedApp.name, environment, amiVersion, emergencyText)
 
 	//Create deployment-specific KeyPair
 
