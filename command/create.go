@@ -31,6 +31,8 @@ type suripuApp struct {
 }
 
 //This hash should be updated anytime default_userdata.sh is updated on S3
+// Update using the provided script `sanders/scripts/userdata-update` or manually use `openssl sha1 <file>`
+
 var expectedUserDataHash = "78c2b582d19f302b956ddae0c30086a00abf2f1f"
 
 var suripuApps []suripuApp = []suripuApp{
