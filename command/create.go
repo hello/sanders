@@ -164,6 +164,7 @@ func (c *CreateCommand) Run(args []string) int {
 
 	cmdFlags.BoolVar(&isEmergency, "emergency", false, "emergency")
 	if err := cmdFlags.Parse(args); err != nil {
+		c.Ui.Error(fmt.Sprintf("%v", err))
 		return 1
 	}
 
