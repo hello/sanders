@@ -150,19 +150,22 @@ type CreateCommand struct {
 }
 
 func (c *CreateCommand) Help() string {
-	helpText := `Usage: create [--emergency]
-	--emergency		Create specially named Launch Config for emergency situations ONLY.`
+	helpText := `Usage: create [--emergency] [--canary]
+	--emergency		Create specially named Launch Config for emergency situations ONLY.
+	--canary		Create a Launch Config for a canary build. (Not necessary for canary deploys)`
 	return strings.TrimSpace(helpText)
 }
 
 func (c *CreateCommand) Run(args []string) int {
 
 	var isEmergency bool
+	var isCanary bool
 
 	cmdFlags := flag.NewFlagSet("create", flag.ContinueOnError)
 	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }
 
 	cmdFlags.BoolVar(&isEmergency, "emergency", false, "emergency")
+	cmdFlags.BoolVar(&isCanary, "canary", false, "canary")
 	if err := cmdFlags.Parse(args); err != nil {
 		c.Ui.Error(fmt.Sprintf("%v", err))
 		return 1
@@ -179,26 +182,9 @@ func (c *CreateCommand) Run(args []string) int {
 	s3KeyService := s3.New(session.New(), s3KeyConfig)
 	ec2Service := ec2.New(session.New(), config)
 
-	c.Ui.Output("Which environment are we creating a Launch Config for?")
-
-	environments := []string{"prod", "canary"}
-
-	for idx, env := range environments {
-		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, env))
-	}
-
-	envSel, err := c.Ui.Ask("Select an environment: [0]")
-	if envSel == "" {
-		envSel = "0"
-	}
-
-	envIdx, _ := strconv.Atoi(envSel)
-
-	environment := environments[envIdx]
-
-	if err != nil || envIdx >= len(environments) {
-		c.Ui.Error(fmt.Sprintf("Incorrect environment selection: %s\n", err))
-		return 1
+	environment := "prod"
+	if isCanary {
+		environment = "canary"
 	}
 
 	c.Ui.Output(fmt.Sprintf("Creating LC for %s environment.\n", environment))
