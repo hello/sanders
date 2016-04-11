@@ -5,9 +5,6 @@ src_path="${GOPATH}src/github.com/hello/sanders/"
 userdata="${src_path}resources/default_userdata.sh"
 create_cmd="${src_path}command/create.go"
 sha=$(openssl sha1 $userdata | awk '{print $2}')
-echo $sha
-search='^var\\ expectedUser.*'
-replace="var\\ expectedUserDataHash\\ =\\ \\\"$sha\\\""
 sub=$(sed -e "s/^var\ expectedUser.*/var\ expectedUserDataHash\ =\ \"$sha\"/" $create_cmd > temp)
 mv temp $create_cmd
 
