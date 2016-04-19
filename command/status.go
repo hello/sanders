@@ -27,13 +27,14 @@ type Status struct {
 }
 
 type HostStatus struct {
-	Hostname    string
-	Version     string
-	InstanceId  string
-	State       string
-	Reason      string
-	Description string
-	Launched    string
+	Hostname       string
+	Version        string
+	InstanceId     string
+	State          string
+	Reason         string
+	Description    string
+	Launched       string
+	PrivateDnsName string
 }
 
 func fetch(elbName string, service *elb.ELB, ec2Service *ec2.EC2, statuses chan *Status) {
@@ -129,10 +130,12 @@ func elbStatus(elbName string, service *elb.ELB, ec2Service *ec2.EC2) *Status {
 	amisToFetch := make([]*string, 0)
 	instanceLaunchTimes := make(map[string]string, 0)
 	lcNames := make(map[string]string, 0)
+	privateDnsNames := make(map[string]string, 0)
 
 	for _, reservation := range resp.Reservations {
 		for _, instance := range reservation.Instances {
 			publicNames[*instance.InstanceId] = *instance.PublicDnsName
+			privateDnsNames[*instance.InstanceId] = *instance.PrivateDnsName
 			amis[*instance.InstanceId] = *instance.ImageId
 			instanceLaunchTimes[*instance.InstanceId] = fmt.Sprintf("%s", *instance.LaunchTime)
 			amisToFetch = append(amisToFetch, instance.ImageId)
@@ -158,6 +161,7 @@ func elbStatus(elbName string, service *elb.ELB, ec2Service *ec2.EC2) *Status {
 		amiId, _ := amis[*state.InstanceId]
 		amiName, _ := amisNames[amiId]
 		launchTime, _ := instanceLaunchTimes[*state.InstanceId]
+		privateDnsName, _ := privateDnsNames[*state.InstanceId]
 
 		parts := make([]string, 0)
 		imageVersion := ""
@@ -170,13 +174,14 @@ func elbStatus(elbName string, service *elb.ELB, ec2Service *ec2.EC2) *Status {
 		}
 
 		hostStatus := HostStatus{
-			Version:     strings.TrimSuffix(imageVersion, "-"),
-			InstanceId:  *state.InstanceId,
-			State:       *state.State,
-			Launched:    launchTime,
-			Description: *state.Description,
-			Reason:      *state.ReasonCode,
-			Hostname:    res,
+			Version:        strings.TrimSuffix(imageVersion, "-"),
+			InstanceId:     *state.InstanceId,
+			State:          *state.State,
+			Launched:       launchTime,
+			Description:    *state.Description,
+			Reason:         *state.ReasonCode,
+			Hostname:       res,
+			PrivateDnsName: privateDnsName,
 		}
 		status.Statuses = append(status.Statuses, hostStatus)
 	}
@@ -194,6 +199,7 @@ func printStatus(ui cli.ColoredUi, status *Status) {
 			ui.Info(fmt.Sprintf("\tState: %s", status.State))
 			ui.Info(fmt.Sprintf("\tLaunched: %s", status.Launched))
 			ui.Info(fmt.Sprintf("\tHostname: %s", status.Hostname))
+			ui.Info(fmt.Sprintf("\tPrivate DNS: %s", status.PrivateDnsName))
 
 		} else if status.Reason == "Instance is in pending state" {
 			ui.Warn(fmt.Sprintf("\tVersion: %s", status.Version))
@@ -203,6 +209,7 @@ func printStatus(ui cli.ColoredUi, status *Status) {
 			ui.Warn(fmt.Sprintf("\tDescription: %s", status.Description))
 			ui.Warn(fmt.Sprintf("\tLaunched: %s", status.Launched))
 			ui.Warn(fmt.Sprintf("\tHostname: %s", status.Hostname))
+			ui.Warn(fmt.Sprintf("\tPrivate DNS: %s", status.PrivateDnsName))
 		} else {
 			ui.Error(fmt.Sprintf("\tVersion: %s", status.Version))
 			ui.Error(fmt.Sprintf("\tID: %s", status.InstanceId))
@@ -211,6 +218,7 @@ func printStatus(ui cli.ColoredUi, status *Status) {
 			ui.Error(fmt.Sprintf("\tDescription: %s", status.Description))
 			ui.Error(fmt.Sprintf("\tLaunched: %s", status.Launched))
 			ui.Error(fmt.Sprintf("\tHostname: %s", status.Hostname))
+			ui.Error(fmt.Sprintf("\tPrivate DNS: %s", status.PrivateDnsName))
 		}
 		ui.Output("")
 	}
