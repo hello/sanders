@@ -97,7 +97,7 @@ func init() {
 		},
 		"monitor": func() (cli.Command, error) {
 			return &command.MonitorCommand{
-				Ui: cui,
+				Ui:       cui,
 				Notifier: notifier,
 			}, nil
 		},
@@ -105,6 +105,11 @@ func init() {
 			return &command.VersionCommand{
 				Ui:        cui,
 				GitCommit: GitCommit,
+			}, nil
+		},
+		"clean": func() (cli.Command, error) {
+			return &command.CleanCommand{
+				Ui: cui,
 			}, nil
 		},
 	}
