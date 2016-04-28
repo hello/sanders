@@ -104,7 +104,7 @@ var suripuApps []suripuApp = []suripuApp{
 		instanceType:          "c3.large",
 		instanceProfile:       "suripu-queue",
 		targetDesiredCapacity: 1,
-		usesPacker:            true,
+		usesPacker:            false,
 		javaVersion:           7,
 		packagePath:		   "com/hello/suripu"},
 	suripuApp{
