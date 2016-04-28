@@ -41,7 +41,7 @@ var suripuApps []suripuApp = []suripuApp{
 		instanceType:          "m3.medium",
 		instanceProfile:       "suripu-app",
 		targetDesiredCapacity: 2,
-		usesPacker:            true,
+		usesPacker:            false,
 		javaVersion:           7,
 		packagePath:		   "com/hello/suripu"},
 	suripuApp{
