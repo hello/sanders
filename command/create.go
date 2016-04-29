@@ -32,7 +32,7 @@ type suripuApp struct {
 }
 
 //This hash should be updated anytime default_userdata.sh is updated on S3
-var expectedUserDataHash = "78c2b582d19f302b956ddae0c30086a00abf2f1f"
+var expectedUserDataHash = "0011ed8a3aeaffa830620d16e39f84549cb0c6cb"
 
 var suripuApps []suripuApp = []suripuApp{
 	suripuApp{
