@@ -2,10 +2,9 @@ package command
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"sort"
 	"strings"
 )
@@ -13,6 +12,7 @@ import (
 type CleanCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Services *AmznServices
 }
 
 func (c *CleanCommand) Help() string {
@@ -22,12 +22,6 @@ func (c *CleanCommand) Help() string {
 
 func (c *CleanCommand) Run(args []string) int {
 
-	config := &aws.Config{
-		Region: aws.String("us-east-1"),
-	}
-
-	asgService := autoscaling.New(session.New(), config)
-
 	lcParams := &autoscaling.DescribeLaunchConfigurationsInput{
 		MaxRecords: aws.Int64(100),
 	}
@@ -35,7 +29,7 @@ func (c *CleanCommand) Run(args []string) int {
 	pageNum := 0
 	allLcs := make([]*autoscaling.LaunchConfiguration, 0)
 
-	pageErr := asgService.DescribeLaunchConfigurationsPages(lcParams, func(page *autoscaling.DescribeLaunchConfigurationsOutput, lastPage bool) bool {
+	pageErr := c.Services.Asg.DescribeLaunchConfigurationsPages(lcParams, func(page *autoscaling.DescribeLaunchConfigurationsOutput, lastPage bool) bool {
 		pageNum++
 		if len(page.LaunchConfigurations) == 0 {
 			return false
@@ -80,7 +74,7 @@ func (c *CleanCommand) Run(args []string) int {
 		params := &autoscaling.DeleteLaunchConfigurationInput{
 			LaunchConfigurationName: lcName,
 		}
-		_, err := asgService.DeleteLaunchConfiguration(params)
+		_, err := c.Services.Asg.DeleteLaunchConfiguration(params)
 
 		if err != nil {
 			// Print the error, cast err to awserr.Error to get the Code and
