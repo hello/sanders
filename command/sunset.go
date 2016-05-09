@@ -1,9 +1,9 @@
 package command
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
-	"fmt"
 	"strconv"
 	"strings"
 )

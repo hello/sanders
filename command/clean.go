@@ -2,9 +2,9 @@ package command
 
 import (
 	"fmt"
-	"github.com/mitchellh/cli"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/mitchellh/cli"
 	"sort"
 	"strings"
 )

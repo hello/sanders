@@ -64,7 +64,7 @@ func (n SlackNotifier) Notify(action *DeployAction) error {
 		AuthorName: n.username,
 		Fields:     fields,
 		Color:      actionColors[action.CmdType],
-		Fallback: 	action.FallbackString(),
+		Fallback:   action.FallbackString(),
 	}
 
 	payload := &Payload{

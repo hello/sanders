@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/hello/sanders/ui"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
-	"sort"
 )
 
 const plan = `
@@ -202,12 +202,12 @@ func (c *CanaryCommand) update(service *autoscaling.AutoScaling, desiredCapacity
 	return resp, err
 }
 
-func (c *CanaryCommand) updateASGTag(service *autoscaling.AutoScaling, asgName string, tagName string, tagValue string, propagate bool) (*autoscaling.CreateOrUpdateTagsOutput, error){
+func (c *CanaryCommand) updateASGTag(service *autoscaling.AutoScaling, asgName string, tagName string, tagValue string, propagate bool) (*autoscaling.CreateOrUpdateTagsOutput, error) {
 
 	//Tag the ASG so version number can be passed to instance
 	params := &autoscaling.CreateOrUpdateTagsInput{
-		Tags: []*autoscaling.Tag{// Required
-			{// Required
+		Tags: []*autoscaling.Tag{ // Required
+			{ // Required
 				Key:               aws.String(tagName), // Required
 				PropagateAtLaunch: aws.Bool(propagate),
 				ResourceId:        aws.String(asgName),
