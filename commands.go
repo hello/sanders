@@ -42,7 +42,7 @@ func init() {
 	}
 
 	sess := session.New()
-	amzn := &command.AmznServices{
+	amazon := &command.AmazonServices{
 		Iam:    iam.New(sess, config),
 		Asg:    autoscaling.New(sess, config),
 		Ec2:    ec2.New(sess, config),
@@ -53,7 +53,7 @@ func init() {
 
 	getUserReq := &iam.GetUserInput{}
 
-	resp, err := amzn.Iam.GetUser(getUserReq)
+	resp, err := amazon.Iam.GetUser(getUserReq)
 
 	if err != nil {
 		cui.Ui.Error(fmt.Sprintln(err.Error()))
@@ -78,7 +78,7 @@ func init() {
 		"clean": func() (cli.Command, error) {
 			return &command.CleanCommand{
 				Ui:       cui,
-				Services: amzn,
+				Services: amazon,
 			}, nil
 		},
 		"confirm": func() (cli.Command, error) {
@@ -115,14 +115,14 @@ func init() {
 			return &command.StatusCommand{
 				Ui:       cui,
 				Notifier: notifier,
-				Services: amzn,
+				Services: amazon,
 			}, nil
 		},
 		"sunset": func() (cli.Command, error) {
 			return &command.SunsetCommand{
 				Ui:       cui,
 				Notifier: notifier,
-				Services: amzn,
+				Services: amazon,
 			}, nil
 		},
 

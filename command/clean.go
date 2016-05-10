@@ -12,7 +12,7 @@ import (
 type CleanCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
-	Services *AmznServices
+	Services *AmazonServices
 }
 
 func (c *CleanCommand) Help() string {

@@ -11,7 +11,7 @@ import (
 type StatusCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
-	Services *AmznServices
+	Services *AmazonServices
 }
 
 func (c *StatusCommand) Help() string {

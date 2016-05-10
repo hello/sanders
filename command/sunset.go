@@ -11,7 +11,7 @@ import (
 type SunsetCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
-	Services *AmznServices
+	Services *AmazonServices
 }
 
 func (c *SunsetCommand) Help() string {

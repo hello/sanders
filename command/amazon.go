@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-type AmznServices struct {
+type AmazonServices struct {
 	Iam    *iam.IAM
 	Ec2    *ec2.EC2
 	Elb    *elb.ELB
