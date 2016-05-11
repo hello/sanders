@@ -35,7 +35,7 @@ func (c *MonitorCommand) Run(args []string) int {
 		"suripu-admin-prod",
 		"messeji-prod",
 		"hello-time-prod",
-		"taimurain",
+		"taimurain-prod",
 	}
 
 	service := elb.New(session.New(), config)
