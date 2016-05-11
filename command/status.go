@@ -57,6 +57,7 @@ func (c *StatusCommand) Run(args []string) int {
 		"suripu-admin-prod",
 		"messeji-prod",
 		"hello-time-prod",
+		"taimurain",
 	}
 
 	statuses := make(chan *Status, 0)

@@ -116,6 +116,15 @@ var suripuApps []suripuApp = []suripuApp{
 		usesPacker:            false,
 		javaVersion:           8,
 		packagePath:		   		 "com/hello"},
+	suripuApp{
+		name:                  "taimurain",
+		sg:                    "sg-b3f631c8",
+		instanceType:          "c4.xlarge",
+		instanceProfile:       "taimurain",
+		targetDesiredCapacity: 2,
+		usesPacker:            true,
+		javaVersion:           8,
+		packagePath:		   		 "com/hello"},
 }
 
 var keyBucket string = "hello-keys"
@@ -285,6 +294,10 @@ func (c *CreateCommand) Run(args []string) int {
 		//Parse out version number
 		amiNameInfo := strings.Split(amiName, "-")
 		amiVersion = amiNameInfo[2]
+		if selectedApp.name == "taimurain" {
+			amiVersion = amiNameInfo[1]
+		}
+
 
 	} else {
 
