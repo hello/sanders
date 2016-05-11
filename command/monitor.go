@@ -58,8 +58,8 @@ func (c *MonitorCommand) Run(args []string) int {
   for {
     status := elbStatus(selectedElb, service, ec2Service)
     printStatus(c.Ui, status)
-    c.Ui.Output("\nSleeping for 20 seconds...\n")
-    time.Sleep(20000 * time.Millisecond)
+    c.Ui.Output("\nSleeping for 10 seconds...\n")
+    time.Sleep(10000 * time.Millisecond)
   }
 
   return 0
