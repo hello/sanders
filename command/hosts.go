@@ -33,8 +33,6 @@ func (c *HostsCommand) Run(args []string) int {
 		return 1
 	}
 
-	apps := []string{"suripu-app", "suripu-service", "suripu-workers", "sense-firehose", "suripu-queue", "messeji"}
-
 	config := &aws.Config{
 		Region: aws.String("us-east-1"),
 	}
@@ -43,13 +41,12 @@ func (c *HostsCommand) Run(args []string) int {
 	ec2Service := ec2.New(session.New(), config)
 
 	groupnames := make([]*string, 0)
-	for _, appName := range apps {
-		one := fmt.Sprintf("%s-prod", appName)
-		two := fmt.Sprintf("%s-prod-green", appName)
-		groupnames = append(groupnames, &one)
-		groupnames = append(groupnames, &two)
-		// groupnames = append(groupnames, "suripu-prdo")
-	}
+	for _, app := range suripuApps {
+        one := fmt.Sprintf("%s-prod", app.name)
+        two := fmt.Sprintf("%s-prod-green", app.name)
+        groupnames = append(groupnames, &one)
+        groupnames = append(groupnames, &two)
+    }
 
 	req := &autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: groupnames,
