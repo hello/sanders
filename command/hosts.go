@@ -62,7 +62,7 @@ func (c *HostsCommand) Run(args []string) int {
 		}
 
 		if len(instanceIds) == 0 {
-			c.Ui.Warn(fmt.Sprintf("No instance for ASG: %s", *asg.AutoScalingGroupName))
+			c.Ui.Warn(fmt.Sprintf("No instance for ASG: %s\n", *asg.AutoScalingGroupName))
 			continue
 		}
 
