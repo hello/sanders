@@ -121,7 +121,7 @@ var suripuApps []suripuApp = []suripuApp{
 		sg:                    "sg-b3f631c8",
 		instanceType:          "c4.xlarge",
 		instanceProfile:       "taimurain",
-		targetDesiredCapacity: 2,
+		targetDesiredCapacity: 3,
 		usesPacker:            true,
 		javaVersion:           8,
 		packagePath:		   		 "com/hello"},
