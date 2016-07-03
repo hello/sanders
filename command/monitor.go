@@ -1,15 +1,15 @@
 package command
 
 import (
-  "fmt"
-  "github.com/aws/aws-sdk-go/aws"
+	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elb"
-  "github.com/mitchellh/cli"
-  "strings"
-  "strconv"
-  "time"
+	"github.com/mitchellh/cli"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type MonitorCommand struct {
@@ -28,7 +28,7 @@ func (c *MonitorCommand) Run(args []string) int {
 		Region: aws.String("us-east-1"),
 	}
 
-  elbs := []string{
+	elbs := []string{
 		"suripu-service-prod",
 		"suripu-app-prod",
 		"suripu-app-canary",
@@ -41,7 +41,7 @@ func (c *MonitorCommand) Run(args []string) int {
 	service := elb.New(session.New(), config)
 	ec2Service := ec2.New(session.New(), config)
 
-  for idx, elb := range elbs {
+	for idx, elb := range elbs {
 		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, elb))
 	}
 
@@ -55,16 +55,15 @@ func (c *MonitorCommand) Run(args []string) int {
 
 	selectedElb := elbs[elbIdx]
 
-  for {
-    status := elbStatus(selectedElb, service, ec2Service)
-    printStatus(c.Ui, status)
-    c.Ui.Output("\nSleeping for 10 seconds...\n")
-    time.Sleep(10000 * time.Millisecond)
-  }
+	for {
+		status := elbStatus(selectedElb, service, ec2Service)
+		printStatus(c.Ui, status)
+		c.Ui.Output("\nSleeping for 10 seconds...\n")
+		time.Sleep(10000 * time.Millisecond)
+	}
 
-  return 0
+	return 0
 }
-
 
 func (c *MonitorCommand) Synopsis() string {
 	return "Monitor ELB status"

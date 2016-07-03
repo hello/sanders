@@ -2,9 +2,9 @@ package command
 
 import (
 	"bytes"
-	"encoding/base64"
 	"crypto/sha1"
-	"io"
+	"encoding/base64"
+	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -12,11 +12,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/mitchellh/cli"
+	"io"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"flag"
 )
 
 type suripuApp struct {
@@ -28,7 +28,7 @@ type suripuApp struct {
 	targetDesiredCapacity int64 //This is the desired capacity of the asg targeted for deployment
 	usesPacker            bool
 	javaVersion           int
-	packagePath			  string
+	packagePath           string
 }
 
 //This hash should be updated anytime default_userdata.sh is updated on S3
@@ -43,7 +43,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 2,
 		usesPacker:            false,
 		javaVersion:           7,
-		packagePath:		   "com/hello/suripu"},
+		packagePath:           "com/hello/suripu"},
 	suripuApp{
 		name:                  "suripu-service",
 		sg:                    "sg-11ac0e75",
@@ -52,7 +52,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 4,
 		usesPacker:            false,
 		javaVersion:           7,
-		packagePath:		   "com/hello/suripu"},
+		packagePath:           "com/hello/suripu"},
 	suripuApp{
 		name:                  "suripu-workers",
 		sg:                    "sg-7054d714",
@@ -61,7 +61,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 2,
 		usesPacker:            false,
 		javaVersion:           7,
-		packagePath:		   "com/hello/suripu"},
+		packagePath:           "com/hello/suripu"},
 	suripuApp{
 		name:                  "suripu-admin",
 		sg:                    "sg-71773a16",
@@ -70,7 +70,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
 		javaVersion:           7,
-		packagePath:		   "com/hello/suripu"},
+		packagePath:           "com/hello/suripu"},
 	suripuApp{
 		name:                  "logsindexer",
 		sg:                    "sg-36f95050",
@@ -79,7 +79,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
 		javaVersion:           8,
-		packagePath:		   "com/hello/suripu"},
+		packagePath:           "com/hello/suripu"},
 	suripuApp{
 		name:                  "sense-firehose",
 		sg:                    "sg-5296b834",
@@ -88,7 +88,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
 		javaVersion:           8,
-		packagePath:		   "com/hello/suripu"},
+		packagePath:           "com/hello/suripu"},
 	suripuApp{
 		name:                  "hello-time",
 		sg:                    "sg-5c371525",
@@ -97,7 +97,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 2,
 		usesPacker:            false,
 		javaVersion:           7,
-		packagePath:		   "com/hello/time"},
+		packagePath:           "com/hello/time"},
 	suripuApp{
 		name:                  "suripu-queue",
 		sg:                    "sg-3e55ba46",
@@ -106,7 +106,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
 		javaVersion:           7,
-		packagePath:		   "com/hello/suripu"},
+		packagePath:           "com/hello/suripu"},
 	suripuApp{
 		name:                  "messeji",
 		sg:                    "sg-45c5c73c",
@@ -115,7 +115,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 4,
 		usesPacker:            false,
 		javaVersion:           8,
-		packagePath:		   		 "com/hello"},
+		packagePath:           "com/hello"},
 	suripuApp{
 		name:                  "taimurain",
 		sg:                    "sg-b3f631c8",
@@ -124,7 +124,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 3,
 		usesPacker:            true,
 		javaVersion:           8,
-		packagePath:		   		 "com/hello"},
+		packagePath:           "com/hello"},
 }
 
 var keyBucket string = "hello-keys"
@@ -298,7 +298,6 @@ func (c *CreateCommand) Run(args []string) int {
 			amiVersion = amiNameInfo[1]
 		}
 
-
 	} else {
 
 		canaryPath := ""
@@ -427,9 +426,9 @@ func (c *CreateCommand) Run(args []string) int {
 	key := fmt.Sprintf("/%s/%s/%s.pem", environment, selectedApp.name, *keyPairResp.KeyName)
 
 	uploadResult, err := s3KeyService.PutObject(&s3.PutObjectInput{
-		Body:   	strings.NewReader(*keyPairResp.KeyMaterial),
-		Bucket:		aws.String(keyBucket),
-		Key:    	&key,
+		Body:   strings.NewReader(*keyPairResp.KeyMaterial),
+		Bucket: aws.String(keyBucket),
+		Key:    &key,
 	})
 
 	if err != nil {
@@ -447,8 +446,8 @@ func (c *CreateCommand) Run(args []string) int {
 		InstanceMonitoring: &autoscaling.InstanceMonitoring{
 			Enabled: aws.Bool(true),
 		},
-		InstanceType:     aws.String(selectedApp.instanceType),
-		KeyName:          aws.String(keyName),
+		InstanceType: aws.String(selectedApp.instanceType),
+		KeyName:      aws.String(keyName),
 		SecurityGroups: []*string{
 			aws.String(selectedApp.sg), // Required
 		},
@@ -490,7 +489,7 @@ func (c *CreateCommand) Run(args []string) int {
 	return 0
 }
 
-func Cleanup(keyName string, objectName string, ui cli.ColoredUi ) bool {
+func Cleanup(keyName string, objectName string, ui cli.ColoredUi) bool {
 
 	ui.Info("")
 	ui.Info(fmt.Sprintf("Cleaning up created KeyPair: %s", keyName))
@@ -515,8 +514,8 @@ func Cleanup(keyName string, objectName string, ui cli.ColoredUi ) bool {
 
 	//Delete pem file from s3
 	delParams := &s3.DeleteObjectInput{
-		Bucket:       aws.String(keyBucket), // Required
-		Key:          aws.String(objectName),  // Required
+		Bucket: aws.String(keyBucket),  // Required
+		Key:    aws.String(objectName), // Required
 	}
 	_, objErr := s3KeyService.DeleteObject(delParams)
 

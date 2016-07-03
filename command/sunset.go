@@ -1,13 +1,9 @@
 package command
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
+	"fmt"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/mitchellh/cli"
-	// "github.com/mitchellh/packer/packer"
-	"fmt"
-	// "sort"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"strconv"
 	"strings"
 )
@@ -15,6 +11,7 @@ import (
 type SunsetCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Services *AmazonServices
 }
 
 func (c *SunsetCommand) Help() string {
@@ -32,13 +29,6 @@ Plan:
 --- # of servers: %d
 
 `
-
-	config := &aws.Config{
-		Region: aws.String("us-east-1"),
-	}
-
-	service := autoscaling.New(session.New(), config)
-
 	c.Ui.Output("Which of the following apps do you want to sunset?\n")
 
 	for idx, app := range suripuApps {
@@ -64,7 +54,7 @@ Plan:
 		AutoScalingGroupNames: groupnames,
 	}
 
-	describeASGResp, err := service.DescribeAutoScalingGroups(describeASGreq)
+	describeASGResp, err := c.Services.Asg.DescribeAutoScalingGroups(describeASGreq)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
 		return 1
@@ -155,7 +145,7 @@ Plan:
 
 	c.Ui.Info("Executing plan:")
 	c.Ui.Info(fmt.Sprintf(plan, sunsetAsg, "N/A", *updateReq.DesiredCapacity))
-	_, err = service.UpdateAutoScalingGroup(updateReq)
+	_, err = c.Services.Asg.UpdateAutoScalingGroup(updateReq)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
 		return 1

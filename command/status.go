@@ -2,8 +2,6 @@ package command
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/mitchellh/cli"
@@ -13,6 +11,7 @@ import (
 type StatusCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Services *AmazonServices
 }
 
 func (c *StatusCommand) Help() string {
@@ -43,13 +42,6 @@ func fetch(elbName string, service *elb.ELB, ec2Service *ec2.EC2, statuses chan 
 
 func (c *StatusCommand) Run(args []string) int {
 
-	config := &aws.Config{
-		Region: aws.String("us-east-1"),
-	}
-
-	service := elb.New(session.New(), config)
-	ec2Service := ec2.New(session.New(), config)
-
 	elbs := []string{
 		"suripu-service-prod",
 		"suripu-app-prod",
@@ -63,7 +55,7 @@ func (c *StatusCommand) Run(args []string) int {
 	statuses := make(chan *Status, 0)
 
 	for _, elbName := range elbs {
-		go fetch(elbName, service, ec2Service, statuses)
+		go fetch(elbName, c.Services.Elb, c.Services.Ec2, statuses)
 		c.Ui.Info(fmt.Sprintf("Fetching: ELB %s", elbName))
 	}
 
@@ -197,27 +189,27 @@ func printStatus(ui cli.ColoredUi, status *Status) {
 		if status.State == "InService" {
 			ui.Info(fmt.Sprintf("\tVersion: %s", status.Version))
 			ui.Info(fmt.Sprintf("\tID: %s", status.InstanceId))
-			ui.Info(fmt.Sprintf("\tState: %s", status.State))
 			ui.Info(fmt.Sprintf("\tLaunched: %s", status.Launched))
+			ui.Info(fmt.Sprintf("\tState: %s", status.State))
 			ui.Info(fmt.Sprintf("\tHostname: %s", status.Hostname))
 			ui.Info(fmt.Sprintf("\tPrivate DNS: %s", status.PrivateDnsName))
 
 		} else if status.Reason == "Instance is in pending state" {
 			ui.Warn(fmt.Sprintf("\tVersion: %s", status.Version))
 			ui.Warn(fmt.Sprintf("\tID: %s", status.InstanceId))
+			ui.Warn(fmt.Sprintf("\tLaunched: %s", status.Launched))
 			ui.Warn(fmt.Sprintf("\tState: %s", status.State))
 			ui.Warn(fmt.Sprintf("\tReason: %s", status.Reason))
 			ui.Warn(fmt.Sprintf("\tDescription: %s", status.Description))
-			ui.Warn(fmt.Sprintf("\tLaunched: %s", status.Launched))
 			ui.Warn(fmt.Sprintf("\tHostname: %s", status.Hostname))
 			ui.Warn(fmt.Sprintf("\tPrivate DNS: %s", status.PrivateDnsName))
 		} else {
 			ui.Error(fmt.Sprintf("\tVersion: %s", status.Version))
 			ui.Error(fmt.Sprintf("\tID: %s", status.InstanceId))
+			ui.Error(fmt.Sprintf("\tLaunched: %s", status.Launched))
 			ui.Error(fmt.Sprintf("\tState: %s", status.State))
 			ui.Error(fmt.Sprintf("\tReason: %s", status.Reason))
 			ui.Error(fmt.Sprintf("\tDescription: %s", status.Description))
-			ui.Error(fmt.Sprintf("\tLaunched: %s", status.Launched))
 			ui.Error(fmt.Sprintf("\tHostname: %s", status.Hostname))
 			ui.Error(fmt.Sprintf("\tPrivate DNS: %s", status.PrivateDnsName))
 		}
