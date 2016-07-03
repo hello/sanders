@@ -115,7 +115,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 4,
 		usesPacker:            false,
 		javaVersion:           8,
-		packagePath:		   		 "com/hello"},
+		packagePath:           "com/hello"},
 	suripuApp{
 		name:                  "taimurain",
 		sg:                    "sg-b3f631c8",
@@ -124,7 +124,7 @@ var suripuApps []suripuApp = []suripuApp{
 		targetDesiredCapacity: 3,
 		usesPacker:            true,
 		javaVersion:           8,
-		packagePath:		   		 "com/hello"},
+		packagePath:           "com/hello"},
 }
 
 var keyBucket string = "hello-keys"
@@ -297,7 +297,6 @@ func (c *CreateCommand) Run(args []string) int {
 		if selectedApp.name == "taimurain" {
 			amiVersion = amiNameInfo[1]
 		}
-
 
 	} else {
 

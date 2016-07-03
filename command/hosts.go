@@ -42,11 +42,11 @@ func (c *HostsCommand) Run(args []string) int {
 
 	groupnames := make([]*string, 0)
 	for _, app := range suripuApps {
-        one := fmt.Sprintf("%s-prod", app.name)
-        two := fmt.Sprintf("%s-prod-green", app.name)
-        groupnames = append(groupnames, &one)
-        groupnames = append(groupnames, &two)
-    }
+		one := fmt.Sprintf("%s-prod", app.name)
+		two := fmt.Sprintf("%s-prod-green", app.name)
+		groupnames = append(groupnames, &one)
+		groupnames = append(groupnames, &two)
+	}
 
 	req := &autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: groupnames,
