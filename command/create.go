@@ -310,7 +310,7 @@ func (c *CreateCommand) Run(args []string) int {
 		fmt.Println(pkgPrefix) //TODO: REMOVE
 		c.Ui.Output("")
 		//retrieve package list from S3 for selectedApp
-		s3ListParams := &s3.ListObjectsInput{
+		s3ListParams := &s3.ListObjectsV2Input{
 			Bucket: aws.String("hello-deploy"), // Required
 			//Delimiter:    aws.String("/"),
 			//EncodingType: aws.String("EncodingType"),
@@ -318,19 +318,24 @@ func (c *CreateCommand) Run(args []string) int {
 			MaxKeys: aws.Int64(100000),
 			Prefix:  aws.String(pkgPrefix),
 		}
-		s3Resp, err := s3Service.ListObjects(s3ListParams)
+
+		availablePackages := make([]*s3.Object, 0)
+
+		err := s3Service.ListObjectsV2Pages(s3ListParams,
+			func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+				for _, item := range page.Contents {
+					if strings.HasSuffix(*item.Key, ".deb") {
+						availablePackages = append(availablePackages, item)
+					}
+				}
+				return !lastPage
+			})
 
 		if err != nil {
 			c.Ui.Error(fmt.Sprintln(err.Error()))
 			return 0
 		}
 
-		availablePackages := make([]*s3.Object, 0)
-		for _, item := range s3Resp.Contents {
-			if strings.HasSuffix(*item.Key, ".deb") {
-				availablePackages = append(availablePackages, item)
-			}
-		}
 		sort.Sort(sort.Reverse(ByObjectLastModified(availablePackages)))
 
 		versions := make([]string, 0)
