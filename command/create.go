@@ -226,7 +226,14 @@ func (c *CreateCommand) Run(args []string) int {
 	lcParams := &autoscaling.DescribeLaunchConfigurationsInput{
 		MaxRecords: aws.Int64(100),
 	}
-	descLCs, err := asgService.DescribeLaunchConfigurations(lcParams)
+
+	currentLCCount := 0
+	err = asgService.DescribeLaunchConfigurationsPages(lcParams,
+		func(page *autoscaling.DescribeLaunchConfigurationsOutput, lastPage bool) bool {
+			currentLCCount += len(page.LaunchConfigurations)
+			return !lastPage
+		})
+
 	if err != nil {
 		// Print the error, cast err to awserr.Error to get the Code and
 		// Message from an error.
@@ -234,7 +241,6 @@ func (c *CreateCommand) Run(args []string) int {
 		return 1
 	}
 
-	currentLCCount := len(descLCs.LaunchConfigurations)
 	c.Ui.Info(fmt.Sprintf("Current Launch Config Capacity: %d/%d", currentLCCount, maxLCs))
 
 	amiId := ""
