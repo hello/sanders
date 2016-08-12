@@ -321,10 +321,8 @@ func (c *CreateCommand) Run(args []string) int {
 
 		availablePackages := make([]*s3.Object, 0)
 
-		pageNum := 0
 		err := s3Service.ListObjectsV2Pages(s3ListParams,
 			func(page *s3.ListObjectsV2Output, lastPage bool) bool {
-				pageNum++
 				for _, item := range page.Contents {
 					if strings.HasSuffix(*item.Key, ".deb") {
 						availablePackages = append(availablePackages, item)
