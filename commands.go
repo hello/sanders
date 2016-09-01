@@ -118,11 +118,6 @@ func init() {
 				Config: config,
 			}, nil
 		},
-		"ddb": func() (cli.Command, error) {
-			return &command.DDBCommand{
-				Ui: cui,
-			}, nil
-		},
 	}
 }
 
