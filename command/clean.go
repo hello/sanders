@@ -60,7 +60,7 @@ func (c *CleanCommand) Run(args []string) int {
 
 	lcToDelete := make([]*string, 0)
 	for i, lcName := range allLcs {
-		if i < 10 {
+		if i < 50 {
 			c.Ui.Warn(*lcName.LaunchConfigurationName)
 			lcToDelete = append(lcToDelete, lcName.LaunchConfigurationName)
 		}
@@ -87,6 +87,8 @@ func (c *CleanCommand) Run(args []string) int {
 			// Message from an error.
 			c.Ui.Error(err.Error())
 
+		} else {
+			c.Ui.Info(fmt.Sprintf("%s deleted", *lcName))
 		}
 	}
 
