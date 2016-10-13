@@ -105,7 +105,7 @@ var suripuApps []suripuApp = []suripuApp{
 		instanceProfile:       "suripu-queue",
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
-		javaVersion:           7,
+		javaVersion:           8,
 		packagePath:           "com/hello/suripu"},
 	suripuApp{
 		name:                  "messeji",
