@@ -38,7 +38,7 @@ var suripuApps []suripuApp = []suripuApp{
 	suripuApp{
 		name:                  "suripu-app",
 		sg:                    "sg-d28624b6",
-		instanceType:          "m3.medium",
+		instanceType:          "c3.large",
 		instanceProfile:       "suripu-app",
 		targetDesiredCapacity: 2,
 		usesPacker:            false,
