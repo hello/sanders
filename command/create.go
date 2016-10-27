@@ -125,15 +125,6 @@ var suripuApps []suripuApp = []suripuApp{
 		usesPacker:            true,
 		javaVersion:           8,
 		packagePath:           "com/hello"},
-	suripuApp{
-		name:                  "supichi",
-		sg:                    "sg-4db8db37",
-		instanceType:          "c3.large",
-		instanceProfile:       "supichi",
-		targetDesiredCapacity: 2,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "is/hello/speech"},
 }
 
 var keyBucket string = "hello-keys"
