@@ -74,7 +74,7 @@ var suripuApps []suripuApp = []suripuApp{
 	suripuApp{
 		name:                  "logsindexer",
 		sg:                    "sg-36f95050",
-		instanceType:          "m3.medium",
+		instanceType:          "t2.micro",
 		instanceProfile:       "logsindexer",
 		targetDesiredCapacity: 1,
 		usesPacker:            false,
