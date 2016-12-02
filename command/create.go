@@ -403,8 +403,8 @@ func (c *CreateCommand) Run(args []string) int {
 
 		userData = base64.StdEncoding.EncodeToString([]byte(userData))
 
-		amiName = "a cloud-init deploy based on the AMI: Base-2016-03-08"
-		amiId = "ami-d06267ba"
+		amiName = "a cloud-init deploy based on the AMI: Base-2016-12-02"
+		amiId = "ami-16d5ee01"
 	}
 
 	c.Ui.Info(fmt.Sprintf("You selected %s\n", amiName))
