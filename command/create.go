@@ -1,9 +1,6 @@
 package command
 
 import (
-	"bytes"
-	"crypto/sha1"
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/hello/sanders/shared"
 	"github.com/mitchellh/cli"
-	"io"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,9 +27,6 @@ type suripuApp struct {
 	javaVersion           int
 	packagePath           string
 }
-
-//This hash should be updated anytime default_userdata.sh is updated on S3
-var expectedUserDataHash = "0011ed8a3aeaffa830620d16e39f84549cb0c6cb"
 
 var suripuApps []suripuApp = []suripuApp{
 	suripuApp{
@@ -154,8 +148,9 @@ func (s ByObjectLastModified) Less(i, j int) bool {
 }
 
 type CreateCommand struct {
-	Ui       cli.ColoredUi
-	Notifier BasicNotifier
+	Ui                cli.ColoredUi
+	Notifier          BasicNotifier
+	UserDataGenerator *shared.UserMetaDataGenerator
 }
 
 func (c *CreateCommand) Help() string {
@@ -367,42 +362,20 @@ func (c *CreateCommand) Run(args []string) int {
 		amiVersion = versions[verIdx]
 
 		//Get the userdata template from S3 for instance startup using cloud-init
-		s3params := &s3.GetObjectInput{
-			Bucket: aws.String("hello-deploy"),                 // Required
-			Key:    aws.String("userdata/default_userdata.sh"), // Required
+		metadataInput := shared.UserMetaDataInput{
+			AmiVersion:    amiVersion,
+			AppName:       selectedApp.name,
+			PackagePath:   selectedApp.packagePath,
+			CanaryPath:    canaryPath,
+			DefaultRegion: "us-east-1",
+			JavaVersion:   selectedApp.javaVersion,
 		}
-		resp, err := s3Service.GetObject(s3params)
 
+		userData, err = c.UserDataGenerator.Parse(&metadataInput)
 		if err != nil {
-			c.Ui.Error(fmt.Sprintln(err.Error()))
-			return 0
+			c.Ui.Error(err.Error())
+			return 1
 		}
-
-		// Pretty-print the response data.
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(resp.Body)
-		userData = buf.String()
-
-		//Verify checksum of userData
-		hash := sha1.New()
-		io.WriteString(hash, userData)
-		userDataHash := fmt.Sprintf("%x", hash.Sum(nil))
-
-		if userDataHash != expectedUserDataHash {
-			c.Ui.Error("UserData hash from S3 does not match the one expected by your version of Sanders. Please correct this before proceeding.")
-			return 0
-		}
-
-		//do token replacement
-		userData = strings.Replace(userData, "{app_version}", amiVersion, -1)
-		userData = strings.Replace(userData, "{app_name}", selectedApp.name, -1)
-		userData = strings.Replace(userData, "{package_path}", selectedApp.packagePath, -1)
-		userData = strings.Replace(userData, "{canary_path}", canaryPath, -1)
-		userData = strings.Replace(userData, "{default_region}", "us-east-1", -1)
-		userData = strings.Replace(userData, "{java_version}", strconv.Itoa(selectedApp.javaVersion), -1)
-
-		userData = base64.StdEncoding.EncodeToString([]byte(userData))
-
 		amiName = "a cloud-init deploy based on the AMI: Base-2016-12-02"
 		amiId = "ami-16d5ee01"
 	}

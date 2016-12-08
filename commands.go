@@ -5,7 +5,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/hello/sanders/command"
+	"github.com/hello/sanders/shared"
 	"github.com/hello/sanders/ui"
 	"github.com/mitchellh/cli"
 	"os"
@@ -17,6 +19,9 @@ var Commands map[string]cli.CommandFactory
 
 var (
 	UiColorBlack = cli.UiColor{37, false}
+
+	//This hash should be updated anytime default_userdata.sh is updated on S3
+	expectedUserDataHash = "0011ed8a3aeaffa830620d16e39f84549cb0c6cb"
 )
 
 func init() {
@@ -32,6 +37,9 @@ func init() {
 			Reader: os.Stdin,
 		},
 	}
+
+	s3Service := s3.New(session.New(), config)
+	userDataGenerator := shared.NewUserMetaDataGenerator(expectedUserDataHash, "hello-deploy", "userdata/default_userdata.sh", s3Service)
 
 	iamService := iam.New(session.New(), config)
 	getUserReq := &iam.GetUserInput{}
@@ -91,8 +99,9 @@ func init() {
 		},
 		"create": func() (cli.Command, error) {
 			return &command.CreateCommand{
-				Ui:       cui,
-				Notifier: notifier,
+				Ui:                cui,
+				Notifier:          notifier,
+				UserDataGenerator: userDataGenerator,
 			}, nil
 		},
 		"monitor": func() (cli.Command, error) {
@@ -116,6 +125,13 @@ func init() {
 			return &command.SetupCommand{
 				Ui:     cui,
 				Config: config,
+			}, nil
+		},
+		"spot": func() (cli.Command, error) {
+			return &command.SpotCommand{
+				Ui:                cui,
+				Notifier:          notifier,
+				UserDataGenerator: userDataGenerator,
 			}, nil
 		},
 	}
