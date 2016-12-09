@@ -4,153 +4,24 @@ import (
 	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/hello/sanders/shared"
+	"github.com/hello/sanders/core"
 	"github.com/mitchellh/cli"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
 
-type suripuApp struct {
-	name                  string
-	sg                    string
-	instanceType          string
-	instanceProfile       string
-	keyName               string
-	targetDesiredCapacity int64 //This is the desired capacity of the asg targeted for deployment
-	usesPacker            bool
-	javaVersion           int
-	packagePath           string
-}
-
-var suripuApps []suripuApp = []suripuApp{
-	suripuApp{
-		name:                  "suripu-app",
-		sg:                    "sg-d28624b6",
-		instanceType:          "c3.large",
-		instanceProfile:       "suripu-app",
-		targetDesiredCapacity: 2,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "com/hello/suripu"},
-	suripuApp{
-		name:                  "suripu-service",
-		sg:                    "sg-11ac0e75",
-		instanceType:          "m3.medium",
-		instanceProfile:       "suripu-service",
-		targetDesiredCapacity: 3,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "com/hello/suripu"},
-	suripuApp{
-		name:                  "suripu-workers",
-		sg:                    "sg-7054d714",
-		instanceType:          "c3.xlarge",
-		instanceProfile:       "suripu-workers",
-		targetDesiredCapacity: 2,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "com/hello/suripu"},
-	suripuApp{
-		name:                  "suripu-admin",
-		sg:                    "sg-71773a16",
-		instanceType:          "t2.micro",
-		instanceProfile:       "suripu-admin",
-		targetDesiredCapacity: 1,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "com/hello/suripu"},
-	suripuApp{
-		name:                  "logsindexer",
-		sg:                    "sg-36f95050",
-		instanceType:          "t2.micro",
-		instanceProfile:       "logsindexer",
-		targetDesiredCapacity: 1,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "com/hello/suripu"},
-	suripuApp{
-		name:                  "sense-firehose",
-		sg:                    "sg-5296b834",
-		instanceType:          "m3.medium",
-		instanceProfile:       "sense-firehose",
-		targetDesiredCapacity: 1,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "com/hello/suripu"},
-	suripuApp{
-		name:                  "hello-time",
-		sg:                    "sg-5c371525",
-		instanceType:          "t2.nano",
-		instanceProfile:       "hello-time",
-		targetDesiredCapacity: 2,
-		usesPacker:            false,
-		javaVersion:           7,
-		packagePath:           "com/hello/time"},
-	suripuApp{
-		name:                  "suripu-queue",
-		sg:                    "sg-3e55ba46",
-		instanceType:          "c3.large",
-		instanceProfile:       "suripu-queue",
-		targetDesiredCapacity: 1,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "com/hello/suripu"},
-	suripuApp{
-		name:                  "messeji",
-		sg:                    "sg-45c5c73c",
-		instanceType:          "m3.medium",
-		instanceProfile:       "messeji",
-		targetDesiredCapacity: 2,
-		usesPacker:            false,
-		javaVersion:           8,
-		packagePath:           "com/hello"},
-	suripuApp{
-		name:                  "taimurain",
-		sg:                    "sg-b3f631c8",
-		instanceType:          "c4.xlarge",
-		instanceProfile:       "taimurain",
-		targetDesiredCapacity: 3,
-		usesPacker:            true,
-		javaVersion:           8,
-		packagePath:           "com/hello"},
-}
-
-var keyBucket string = "hello-keys"
-
-type ByImageTime []*ec2.Image
-
-func (s ByImageTime) Len() int {
-	return len(s)
-}
-func (s ByImageTime) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s ByImageTime) Less(i, j int) bool {
-	return *s[i].CreationDate < *s[j].CreationDate
-}
-
-type ByObjectLastModified []*s3.Object
-
-func (s ByObjectLastModified) Len() int {
-	return len(s)
-}
-func (s ByObjectLastModified) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s ByObjectLastModified) Less(i, j int) bool {
-	return s[i].LastModified.Unix() < s[j].LastModified.Unix()
-}
-
 type CreateCommand struct {
-	Ui                cli.ColoredUi
-	Notifier          BasicNotifier
-	UserDataGenerator *shared.UserMetaDataGenerator
+	Ui          cli.ColoredUi
+	Notifier    BasicNotifier
+	AmiSelector core.AmiSelector
+	Ec2Service  *ec2.EC2
+	S3Service   *s3.S3
+	AsgService  *autoscaling.AutoScaling
+	KeyService  core.KeyService
+	Apps        []core.SuripuApp
 }
 
 func (c *CreateCommand) Help() string {
@@ -175,17 +46,6 @@ func (c *CreateCommand) Run(args []string) int {
 		return 1
 	}
 
-	config := &aws.Config{
-		Region: aws.String("us-east-1"),
-	}
-	s3KeyConfig := &aws.Config{
-		Region: aws.String("us-west-1"),
-	}
-	asgService := autoscaling.New(session.New(), config)
-	s3Service := s3.New(session.New(), config)
-	s3KeyService := s3.New(session.New(), s3KeyConfig)
-	ec2Service := ec2.New(session.New(), config)
-
 	environment := "prod"
 	if isCanary {
 		environment = "canary"
@@ -193,24 +53,15 @@ func (c *CreateCommand) Run(args []string) int {
 
 	c.Ui.Output(fmt.Sprintf("Creating LC for %s environment.\n", environment))
 
-	c.Ui.Output("Which app are we building for?")
-
-	for idx, app := range suripuApps {
-		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
-	}
-
-	appSel, err := c.Ui.Ask("Select an app #: ")
-	appIdx, _ := strconv.Atoi(appSel)
-
-	if err != nil || appIdx >= len(suripuApps) {
-		c.Ui.Error(fmt.Sprintf("Incorrect app selection: %s\n", err))
+	appSelector := core.NewCliAppSelector(c.Ui)
+	selectedApp, err := appSelector.Choose(c.Apps)
+	if err != nil {
+		c.Ui.Error(err.Error())
 		return 1
 	}
 
-	selectedApp := suripuApps[appIdx]
-
 	var params *autoscaling.DescribeAccountLimitsInput
-	accountLimits, err := asgService.DescribeAccountLimits(params)
+	accountLimits, err := c.AsgService.DescribeAccountLimits(params)
 
 	if err != nil {
 		c.Ui.Error(err.Error())
@@ -223,7 +74,7 @@ func (c *CreateCommand) Run(args []string) int {
 	}
 
 	currentLCCount := 0
-	err = asgService.DescribeLaunchConfigurationsPages(lcParams,
+	err = c.AsgService.DescribeLaunchConfigurationsPages(lcParams,
 		func(page *autoscaling.DescribeLaunchConfigurationsOutput, lastPage bool) bool {
 			currentLCCount += len(page.LaunchConfigurations)
 			return !lastPage
@@ -238,232 +89,77 @@ func (c *CreateCommand) Run(args []string) int {
 
 	c.Ui.Info(fmt.Sprintf("Current Launch Config Capacity: %d/%d", currentLCCount, maxLCs))
 
-	amiId := ""
-	amiName := ""
-	amiVersion := ""
-	userData := ""
+	selectedAmi, err := c.AmiSelector.Select(*selectedApp, environment)
 
-	if selectedApp.usesPacker {
-		//Allow user to enter version number and search for AMI based on that
-		c.Ui.Warn(fmt.Sprintf("%s not yet handled by Packer-free deployment. Proceeding with Packer-created AMI selection.", selectedApp.name))
-
-		ec2ParamsAll := &ec2.DescribeImagesInput{
-			DryRun: aws.Bool(false),
-			Filters: []*ec2.Filter{
-				{ // Required
-					Name: aws.String("is-public"),
-					Values: []*string{
-						aws.String("false"), // Required
-						// More values...
-					},
-				},
-			},
-		}
-		respAll, err := ec2Service.DescribeImages(ec2ParamsAll)
-
-		if err != nil {
-			c.Ui.Error(fmt.Sprintln(err.Error()))
-			return 1
-		}
-
-		validImages := make([]*ec2.Image, 0)
-
-		for _, image := range respAll.Images {
-			if strings.HasPrefix(*image.Name, selectedApp.name) {
-				validImages = append(validImages, image)
-			}
-		}
-
-		sort.Sort(sort.Reverse(ByImageTime(validImages)))
-
-		c.Ui.Output("Which AMI should be used?")
-		numImages := Min(len(validImages), 10)
-		for idx := 0; idx < numImages; idx++ {
-			c.Ui.Output(fmt.Sprintf("[%d] \t%s\t%s", idx, *validImages[idx].Name, *validImages[idx].CreationDate))
-		}
-
-		ami, err := c.Ui.Ask("Select an AMI #: ")
-		amiIdx, _ := strconv.Atoi(ami)
-
-		if err != nil || amiIdx >= len(validImages) {
-			c.Ui.Error(fmt.Sprintf("Incorrect AMI selection: %s\n", err))
-			return 1
-		}
-
-		amiName = *validImages[amiIdx].Name
-		amiId = *validImages[amiIdx].ImageId
-		//Parse out version number
-		amiNameInfo := strings.Split(amiName, "-")
-		amiVersion = amiNameInfo[2]
-		if selectedApp.name == "taimurain" {
-			amiVersion = amiNameInfo[1]
-		}
-
-	} else {
-
-		canaryPath := ""
-		if environment == "canary" {
-			canaryPath = "canary/"
-		}
-		pkgPrefix := fmt.Sprintf("packages/%s/%s/%s", selectedApp.packagePath, selectedApp.name, canaryPath)
-
-		fmt.Println(pkgPrefix) //TODO: REMOVE
-		c.Ui.Output("")
-		//retrieve package list from S3 for selectedApp
-		s3ListParams := &s3.ListObjectsV2Input{
-			Bucket: aws.String("hello-deploy"), // Required
-			//Delimiter:    aws.String("/"),
-			//EncodingType: aws.String("EncodingType"),
-			//Marker:       aws.String("Marker"),
-			MaxKeys: aws.Int64(100000),
-			Prefix:  aws.String(pkgPrefix),
-		}
-
-		availablePackages := make([]*s3.Object, 0)
-
-		err := s3Service.ListObjectsV2Pages(s3ListParams,
-			func(page *s3.ListObjectsV2Output, lastPage bool) bool {
-				for _, item := range page.Contents {
-					if strings.HasSuffix(*item.Key, ".deb") {
-						availablePackages = append(availablePackages, item)
-					}
-				}
-				return !lastPage
-			})
-
-		if err != nil {
-			c.Ui.Error(fmt.Sprintln(err.Error()))
-			return 0
-		}
-
-		sort.Sort(sort.Reverse(ByObjectLastModified(availablePackages)))
-
-		versions := make([]string, 0)
-
-		c.Ui.Info(fmt.Sprintf("Latest 10 packages available for %s:", selectedApp.name))
-		c.Ui.Info(" #\tVersion:  \tLast Modified:")
-		c.Ui.Info("---|----------------|---------------")
-		numImages := Min(len(availablePackages), 10)
-		for idx := 0; idx < numImages; idx++ {
-			objectKeyChunks := strings.Split(*availablePackages[idx].Key, "/")
-			versionNumber := objectKeyChunks[len(objectKeyChunks)-2]
-			versions = append(versions, versionNumber)
-			c.Ui.Output(fmt.Sprintf("[%d]\t%s\t\t%s", idx, versionNumber, availablePackages[idx].LastModified.Format(time.UnixDate)))
-		}
-
-		ver, err := c.Ui.Ask("Select a version #: ")
-		verIdx, _ := strconv.Atoi(ver)
-
-		if err != nil || verIdx >= len(availablePackages) {
-			c.Ui.Error(fmt.Sprintf("Incorrect version selection: %s\n", err))
-			return 1
-		}
-
-		amiVersion = versions[verIdx]
-
-		//Get the userdata template from S3 for instance startup using cloud-init
-		metadataInput := shared.UserMetaDataInput{
-			AmiVersion:    amiVersion,
-			AppName:       selectedApp.name,
-			PackagePath:   selectedApp.packagePath,
-			CanaryPath:    canaryPath,
-			DefaultRegion: "us-east-1",
-			JavaVersion:   selectedApp.javaVersion,
-		}
-
-		userData, err = c.UserDataGenerator.Parse(&metadataInput)
-		if err != nil {
-			c.Ui.Error(err.Error())
-			return 1
-		}
-		amiName = "a cloud-init deploy based on the AMI: Base-2016-12-02"
-		amiId = "ami-16d5ee01"
+	if err != nil {
+		c.Ui.Error(err.Error())
+		return 1
 	}
 
-	c.Ui.Info(fmt.Sprintf("You selected %s\n", amiName))
-	c.Ui.Info(fmt.Sprintf("Version Number: %s\n", amiVersion))
+	c.Ui.Info(fmt.Sprintf("You selected %s\n", selectedAmi.Name))
+	c.Ui.Info(fmt.Sprintf("Version Number: %s\n", selectedAmi.Version))
 
 	emergencyText := ""
 	if isEmergency {
 		emergencyText = "-emergency"
 	}
 
-	launchConfigName := fmt.Sprintf("%s-%s-%s%s", selectedApp.name, environment, amiVersion, emergencyText)
+	launchConfigName := fmt.Sprintf("%s-%s-%s%s", selectedApp.Name, environment, selectedAmi.Version, emergencyText)
 
 	//Create deployment-specific KeyPair
 
 	keyName := fmt.Sprintf("%s-%d", launchConfigName, time.Now().Unix())
-	keyPairParams := &ec2.CreateKeyPairInput{
-		KeyName: aws.String(keyName), // Required
-		DryRun:  aws.Bool(false),
-	}
-	keyPairResp, err := ec2Service.CreateKeyPair(keyPairParams)
 
+	keyUploadResults, err := c.KeyService.Upload(keyName, *selectedApp, environment)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Failed to create KeyPair. %s", err.Error()))
+		c.Ui.Error(err.Error())
 		return 1
 	}
 
-	c.Ui.Info(fmt.Sprintf("Created KeyPair: %s. \n", *keyPairResp.KeyName))
-
-	//Upload key to S3
-	key := fmt.Sprintf("/%s/%s/%s.pem", environment, selectedApp.name, *keyPairResp.KeyName)
-
-	uploadResult, err := s3KeyService.PutObject(&s3.PutObjectInput{
-		Body:   strings.NewReader(*keyPairResp.KeyMaterial),
-		Bucket: aws.String(keyBucket),
-		Key:    &key,
-	})
-
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Failed to upload key %s. %s\n", key, err))
-		return 1
-	}
-
-	c.Ui.Info(fmt.Sprintf("Uploaded key %s to S3. (Etag: %s)\n", key, *uploadResult.ETag))
+	c.Ui.Info(fmt.Sprintf("Created KeyPair: %s. \n", keyUploadResults.KeyName))
 
 	createLCParams := &autoscaling.CreateLaunchConfigurationInput{
 		LaunchConfigurationName:  aws.String(launchConfigName), // Required
 		AssociatePublicIpAddress: aws.Bool(true),
-		IamInstanceProfile:       aws.String(selectedApp.instanceProfile),
-		ImageId:                  aws.String(amiId),
+		IamInstanceProfile:       aws.String(selectedApp.InstanceProfile),
+		ImageId:                  aws.String(selectedAmi.Id),
 		InstanceMonitoring: &autoscaling.InstanceMonitoring{
 			Enabled: aws.Bool(true),
 		},
-		InstanceType: aws.String(selectedApp.instanceType),
+		InstanceType: aws.String(selectedApp.InstanceType),
 		KeyName:      aws.String(keyName),
 		SecurityGroups: []*string{
-			aws.String(selectedApp.sg), // Required
+			aws.String(selectedApp.SecurityGroup), // Required
 		},
-		UserData: aws.String(userData),
+		UserData: aws.String(selectedAmi.UserData),
 	}
 
-	deployAction := NewDeployAction("create", selectedApp.name, launchConfigName, 0)
+	deployAction := NewDeployAction("create", selectedApp.Name, launchConfigName, 0)
 
 	c.Ui.Info(fmt.Sprint("Creating Launch Configuration with the following parameters:"))
 	c.Ui.Info(fmt.Sprint(createLCParams))
 	ok, err := c.Ui.Ask("'ok' if you agree, anything else to cancel: ")
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("%s", err))
-		Cleanup(keyName, key, c.Ui)
+		c.Cleanup(keyUploadResults)
 		return 1
 	}
 
 	if ok != "ok" {
 		c.Ui.Warn("Cancelled.")
-		if !Cleanup(keyName, key, c.Ui) {
+		if !c.Cleanup(keyUploadResults) {
 			return 1
 		}
 		return 0
 	}
 
-	_, createError := asgService.CreateLaunchConfiguration(createLCParams)
+	_, createError := c.AsgService.CreateLaunchConfiguration(createLCParams)
 
 	if createError != nil {
 		// Message from an error.
 		c.Ui.Error(fmt.Sprintf("Failed to create Launch Configuration: %s", launchConfigName))
 		c.Ui.Error(fmt.Sprintln(createError.Error()))
-		Cleanup(keyName, key, c.Ui)
+		c.Cleanup(keyUploadResults)
 		return 1
 	}
 
@@ -473,53 +169,22 @@ func (c *CreateCommand) Run(args []string) int {
 	return 0
 }
 
-func Cleanup(keyName string, objectName string, ui cli.ColoredUi) bool {
+func (c *CreateCommand) Cleanup(uploadRes *core.KeyUploadResult) bool {
 
-	ui.Info("")
-	ui.Info(fmt.Sprintf("Cleaning up created KeyPair: %s", keyName))
+	c.Ui.Info("")
+	c.Ui.Info(fmt.Sprintf("Cleaning up created KeyPair: %s", uploadRes.KeyName))
 
-	//Remove any created keys from S3 & EC2
-	ec2Service := ec2.New(session.New(), aws.NewConfig().WithRegion("us-east-1"))
-	s3KeyService := s3.New(session.New(), aws.NewConfig().WithRegion("us-west-1"))
-
-	//Delete key from EC2
-	params := &ec2.DeleteKeyPairInput{
-		KeyName: aws.String(keyName), // Required
-		DryRun:  aws.Bool(false),
-	}
-	_, err := ec2Service.DeleteKeyPair(params)
-
+	err := c.KeyService.CleanUp(uploadRes)
 	if err != nil {
-		ui.Error(fmt.Sprintf("Failed to delete KeyPair: %s", err.Error()))
+		c.Ui.Error(err.Error())
 		return false
 	}
 
-	ui.Info(fmt.Sprintf("Successfully deleted KeyPair: %s", keyName))
-
-	//Delete pem file from s3
-	delParams := &s3.DeleteObjectInput{
-		Bucket: aws.String(keyBucket),  // Required
-		Key:    aws.String(objectName), // Required
-	}
-	_, objErr := s3KeyService.DeleteObject(delParams)
-
-	if objErr != nil {
-		ui.Error(fmt.Sprintf("Failed to delete S3 Object: %s", objErr.Error()))
-		return false
-	}
-
-	ui.Info(fmt.Sprintf("Successfully deleted S3 object: %s", objectName))
+	c.Ui.Info(fmt.Sprintf("Successfully deleted S3 object: %s", uploadRes.Key))
 
 	return true
 }
 
 func (c *CreateCommand) Synopsis() string {
 	return "Creates a launch configuration based on selected parameters."
-}
-
-func Min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
 }

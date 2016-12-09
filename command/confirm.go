@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/hello/sanders/core"
 	"github.com/mitchellh/cli"
 	"strconv"
 	"strings"
@@ -13,6 +14,7 @@ import (
 type ConfirmCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Apps     []core.SuripuApp
 }
 
 func (c *ConfirmCommand) Help() string {
@@ -42,18 +44,18 @@ Plan:
 
 	c.Ui.Info(fmt.Sprintf("--> : %s", version))
 
-	possibleLCs := make([]*string, len(suripuApps))
+	possibleLCs := make([]*string, len(c.Apps))
 
-	var appNameMap map[string]suripuApp
-	appNameMap = make(map[string]suripuApp)
+	var appNameMap map[string]core.SuripuApp
+	appNameMap = make(map[string]core.SuripuApp)
 
-	for idx, app := range suripuApps {
-		str := fmt.Sprintf("%s-prod-%s", app.name, version)
+	for idx, app := range c.Apps {
+		str := fmt.Sprintf("%s-prod-%s", app.Name, version)
 		possibleLCs[idx] = &str
-		appNameMap[app.name] = app
+		appNameMap[app.Name] = app
 	}
 
-	max := int64(len(suripuApps))
+	max := int64(len(c.Apps))
 	describeLCReq := &autoscaling.DescribeLaunchConfigurationsInput{
 		LaunchConfigurationNames: possibleLCs,
 		MaxRecords:               &max,
@@ -93,8 +95,8 @@ Plan:
 	selectedApp := appNameMap[parts[0]]
 
 	groupnames := make([]*string, 2)
-	one := fmt.Sprintf("%s-prod", selectedApp.name)
-	two := fmt.Sprintf("%s-prod-green", selectedApp.name)
+	one := fmt.Sprintf("%s-prod", selectedApp.Name)
+	two := fmt.Sprintf("%s-prod-green", selectedApp.Name)
 	groupnames[0] = &one
 	groupnames[1] = &two
 
@@ -108,7 +110,7 @@ Plan:
 		return 1
 	}
 
-	desiredCapacity := selectedApp.targetDesiredCapacity
+	desiredCapacity := selectedApp.TargetDesiredCapacity
 
 	for _, asg := range describeASGResp.AutoScalingGroups {
 		asgName := *asg.AutoScalingGroupName

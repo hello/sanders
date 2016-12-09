@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/hello/sanders/core"
 	"github.com/mitchellh/cli"
 	"sort"
 	"strings"
@@ -13,6 +14,7 @@ import (
 type CleanCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Apps     []core.SuripuApp
 }
 
 func (c *CleanCommand) Help() string {
@@ -42,8 +44,8 @@ func (c *CleanCommand) Run(args []string) int {
 		}
 
 		for _, lc := range page.LaunchConfigurations {
-			for _, app := range suripuApps {
-				if strings.HasPrefix(*lc.LaunchConfigurationName, app.name) {
+			for _, app := range c.Apps {
+				if strings.HasPrefix(*lc.LaunchConfigurationName, app.Name) {
 					allLcs = append(allLcs, lc)
 				}
 			}
@@ -56,7 +58,7 @@ func (c *CleanCommand) Run(args []string) int {
 		c.Ui.Error(fmt.Sprintf("%s", pageErr))
 		return 1
 	}
-	sort.Sort(ByLCTime(allLcs))
+	sort.Sort(core.ByLCTime(allLcs))
 
 	lcToDelete := make([]*string, 0)
 	for i, lcName := range allLcs {

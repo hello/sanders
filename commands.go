@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/hello/sanders/command"
-	"github.com/hello/sanders/shared"
-	"github.com/hello/sanders/ui"
+	"github.com/hello/sanders/core"
 	"github.com/mitchellh/cli"
 	"os"
 	"os/signal"
@@ -25,9 +26,7 @@ var (
 )
 
 func init() {
-	config := &aws.Config{
-		Region: aws.String("us-east-1"),
-	}
+
 	cui := cli.ColoredUi{
 		InfoColor:  cli.UiColorGreen,
 		ErrorColor: cli.UiColorRed,
@@ -38,10 +37,42 @@ func init() {
 		},
 	}
 
-	s3Service := s3.New(session.New(), config)
-	userDataGenerator := shared.NewUserMetaDataGenerator(expectedUserDataHash, "hello-deploy", "userdata/default_userdata.sh", s3Service)
+	sess := session.New()
 
-	iamService := iam.New(session.New(), config)
+	config := &aws.Config{
+		Region: aws.String("us-east-1"),
+	}
+	s3KeyConfig := &aws.Config{
+		Region: aws.String("us-west-1"),
+	}
+
+	s3service := s3.New(sess, config)
+	asgService := autoscaling.New(sess, config)
+	ec2service := ec2.New(sess, config)
+	s3KeyService := s3.New(sess, s3KeyConfig)
+	iamService := iam.New(sess, config)
+
+	userDataGenerator := core.NewUserMetaDataGenerator(
+		expectedUserDataHash,
+		"hello-deploy",
+		"userdata/default_userdata.sh",
+		s3service,
+	)
+
+	keyService := core.NewS3KeyService(
+		s3KeyService,
+		ec2service,
+		"hello-keys",
+	)
+
+	amiSelector := core.NewSuripuAppAmiSelector(
+		cui,
+		ec2service,
+		s3service,
+		userDataGenerator,
+	)
+
+	fleetManager := core.NewFleetManager(cui, ec2service)
 	getUserReq := &iam.GetUserInput{}
 
 	resp, err := iamService.GetUser(getUserReq)
@@ -52,86 +83,105 @@ func init() {
 	}
 
 	user := *resp.User.UserName
-	cpui := ui.ProgressUi{
-		Writer: os.Stdout,
-		Ui:     cui,
-	}
+	// cpui := ui.ProgressUi{
+	// 	Writer: os.Stdout,
+	// 	Ui:     cui,
+	// }
 
 	notifier := command.NewSlackNotifier(user)
 
 	Commands = map[string]cli.CommandFactory{
-
-		"status": func() (cli.Command, error) {
-			return &command.StatusCommand{
-				Ui:       cui,
-				Notifier: notifier,
+		"cancel-spot": func() (cli.Command, error) {
+			return &command.CancelCommand{
+				Ui:           cui,
+				Notifier:     notifier,
+				Apps:         suripuApps,
+				FleetManager: fleetManager,
 			}, nil
 		},
-		"sunset": func() (cli.Command, error) {
-			return &command.SunsetCommand{
-				Ui:       cui,
-				Notifier: notifier,
-			}, nil
-		},
-		"deploy": func() (cli.Command, error) {
-			return &command.DeployCommand{
-				Ui:       cui,
-				Notifier: notifier,
-			}, nil
-		},
-		"hosts": func() (cli.Command, error) {
-			return &command.HostsCommand{
-				Ui:       cui,
-				Notifier: notifier,
-			}, nil
-		},
-		"canary": func() (cli.Command, error) {
-			return &command.CanaryCommand{
-				Ui:       cpui,
-				Notifier: notifier,
+		"clean": func() (cli.Command, error) {
+			return &command.CleanCommand{
+				Ui:   cui,
+				Apps: suripuApps,
 			}, nil
 		},
 		"confirm": func() (cli.Command, error) {
 			return &command.ConfirmCommand{
 				Ui:       cui,
 				Notifier: notifier,
+				Apps:     suripuApps,
 			}, nil
 		},
 		"create": func() (cli.Command, error) {
 			return &command.CreateCommand{
-				Ui:                cui,
-				Notifier:          notifier,
-				UserDataGenerator: userDataGenerator,
+				Ui:          cui,
+				Notifier:    notifier,
+				AmiSelector: amiSelector,
+				KeyService:  keyService,
+				Ec2Service:  ec2service,
+				S3Service:   s3service,
+				AsgService:  asgService,
+				Apps:        suripuApps,
+			}, nil
+		},
+		"deploy": func() (cli.Command, error) {
+			return &command.DeployCommand{
+				Ui:       cui,
+				Notifier: notifier,
+				Apps:     suripuApps,
+			}, nil
+		},
+		"hosts": func() (cli.Command, error) {
+			return &command.HostsCommand{
+				Ui:       cui,
+				Notifier: notifier,
+				Apps:     suripuApps,
+			}, nil
+		},
+		"launch-spot": func() (cli.Command, error) {
+			return &command.LaunchCommand{
+				Ui:           cui,
+				Notifier:     notifier,
+				AmiSelector:  amiSelector,
+				KeyService:   keyService,
+				Apps:         suripuApps,
+				FleetManager: fleetManager,
 			}, nil
 		},
 		"monitor": func() (cli.Command, error) {
 			return &command.MonitorCommand{
 				Ui:       cui,
 				Notifier: notifier,
+				Apps:     suripuApps,
 			}, nil
 		},
-		"version": func() (cli.Command, error) {
-			return &command.VersionCommand{
-				Ui:        cui,
-				GitCommit: GitCommit,
-			}, nil
-		},
-		"clean": func() (cli.Command, error) {
-			return &command.CleanCommand{
-				Ui: cui,
-			}, nil
-		},
+
 		"setup": func() (cli.Command, error) {
 			return &command.SetupCommand{
 				Ui:     cui,
 				Config: config,
+				Apps:   suripuApps,
 			}, nil
 		},
-		"spot": func() (cli.Command, error) {
-			return &command.SpotCommand{
-				Ui:                cui,
-				Notifier:          notifier,
-				UserDataGenerator: userDataGenerator,
+		"status": func() (cli.Command, error) {
+			return &command.StatusCommand{
+				Ui:       cui,
+				Notifier: notifier,
+				Apps:     suripuApps,
+			}, nil
+		},
+		"sunset": func() (cli.Command, error) {
+			return &command.SunsetCommand{
+				Ui:       cui,
+				Notifier: notifier,
+				Apps:     suripuApps,
+			}, nil
+		},
+
+		"version": func() (cli.Command, error) {
+			return &command.VersionCommand{
+				Ui:        cui,
+				GitCommit: GitCommit,
 			}, nil
 		},
 	}

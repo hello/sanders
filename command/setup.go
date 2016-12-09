@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/hello/sanders/core"
 	"github.com/hello/sanders/setup"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/multistep"
@@ -16,6 +17,7 @@ import (
 type SetupCommand struct {
 	Ui     cli.ColoredUi
 	Config *aws.Config
+	Apps   []core.SuripuApp
 }
 
 func (c *SetupCommand) Help() string {

@@ -1,4 +1,4 @@
-package shared
+package core
 
 import (
 	"bytes"
@@ -19,6 +19,9 @@ type UserMetaDataGenerator struct {
 	srv          *s3.S3
 }
 
+func (u *UserMetaDataGenerator) String() string {
+	return fmt.Sprintf("{expectedHash: %s, bucket: %s, key: %s}", u.expectedHash, u.bucket, u.key)
+}
 func NewUserMetaDataGenerator(expectedHash, bucket, key string, srv *s3.S3) *UserMetaDataGenerator {
 	return &UserMetaDataGenerator{
 		bucket:       bucket,

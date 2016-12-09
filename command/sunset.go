@@ -8,6 +8,7 @@ import (
 	"fmt"
 	// "sort"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/hello/sanders/core"
 	"strconv"
 	"strings"
 )
@@ -15,6 +16,7 @@ import (
 type SunsetCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Apps     []core.SuripuApp
 }
 
 func (c *SunsetCommand) Help() string {
@@ -41,22 +43,22 @@ Plan:
 
 	c.Ui.Output("Which of the following apps do you want to sunset?\n")
 
-	for idx, app := range suripuApps {
-		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
+	for idx, app := range c.Apps {
+		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.Name))
 	}
 	appSel, err := c.Ui.Ask("Select an app #: ")
 	appIdx, _ := strconv.Atoi(appSel)
 
-	if err != nil || appIdx >= len(suripuApps) {
+	if err != nil || appIdx >= len(c.Apps) {
 		c.Ui.Error(fmt.Sprintf("Incorrect app selection: %s\n", err))
 		return 1
 	}
 
-	c.Ui.Info(fmt.Sprintf("--> proceeding to sunset app: %s\n", suripuApps[appIdx].name))
+	c.Ui.Info(fmt.Sprintf("--> proceeding to sunset app: %s\n", c.Apps[appIdx].Name))
 
 	groupnames := make([]*string, 2)
-	one := fmt.Sprintf("%s-prod", suripuApps[appIdx].name)
-	two := fmt.Sprintf("%s-prod-green", suripuApps[appIdx].name)
+	one := fmt.Sprintf("%s-prod", c.Apps[appIdx].Name)
+	two := fmt.Sprintf("%s-prod-green", c.Apps[appIdx].Name)
 	groupnames[0] = &one
 	groupnames[1] = &two
 
@@ -80,19 +82,19 @@ Plan:
 	}
 
 	allASGsAtDesiredCapacity := true
-	c.Ui.Output(fmt.Sprintf("ASG matching app : %s\n", suripuApps[appIdx].name))
+	c.Ui.Output(fmt.Sprintf("ASG matching app : %s\n", c.Apps[appIdx].Name))
 	for idx, asgName := range asgs {
 		asg, _ := instancesPerASG[asgName]
 		parts := strings.Split(*asg.LaunchConfigurationName, "-prod-")
 		c.Ui.Info(fmt.Sprintf("[%d] %s (%d instances running %s)", idx, asgName, len(asg.Instances), parts[1]))
-		if len(asg.Instances) < int(suripuApps[appIdx].targetDesiredCapacity) {
+		if len(asg.Instances) < int(c.Apps[appIdx].TargetDesiredCapacity) {
 			allASGsAtDesiredCapacity = false
 		}
 	}
 
 	if allASGsAtDesiredCapacity == false {
 		c.Ui.Output("")
-		c.Ui.Error(fmt.Sprintf("All ASGs are not at desired capacity (%d). Ensure you have confirmed your deploy.", suripuApps[appIdx].targetDesiredCapacity))
+		c.Ui.Error(fmt.Sprintf("All ASGs are not at desired capacity (%d). Ensure you have confirmed your deploy.", c.Apps[appIdx].TargetDesiredCapacity))
 
 		c.Ui.Warn("Would you like to override and sunset an ASG anyway?")
 		ok, err := c.Ui.Ask("'ok' if you would like to override, anything else to cancel: ")
