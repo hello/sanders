@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/hello/sanders/core"
 	"github.com/mitchellh/cli"
 	"io/ioutil"
 	"os"
@@ -16,6 +17,7 @@ import (
 type HostsCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Apps     []core.SuripuApp
 }
 
 func (c *HostsCommand) Help() string {
@@ -41,12 +43,12 @@ func (c *HostsCommand) Run(args []string) int {
 	ec2Service := ec2.New(session.New(), config)
 
 	groupnames := make([]*string, 0)
-	for _, app := range suripuApps {
-        one := fmt.Sprintf("%s-prod", app.name)
-        two := fmt.Sprintf("%s-prod-green", app.name)
-        groupnames = append(groupnames, &one)
-        groupnames = append(groupnames, &two)
-    }
+	for _, app := range c.Apps {
+		one := fmt.Sprintf("%s-prod", app.Name)
+		two := fmt.Sprintf("%s-prod-green", app.Name)
+		groupnames = append(groupnames, &one)
+		groupnames = append(groupnames, &two)
+	}
 
 	req := &autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: groupnames,

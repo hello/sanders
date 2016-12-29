@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/hello/sanders/core"
 	"github.com/mitchellh/cli"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 type MonitorCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Apps     []core.SuripuApp
 }
 
 func (c *MonitorCommand) Help() string {

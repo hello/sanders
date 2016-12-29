@@ -5,34 +5,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/hello/sanders/core"
 	"github.com/mitchellh/cli"
-	"sort"
-	"strconv"
 	"strings"
 )
-
-type ByLCTime []*autoscaling.LaunchConfiguration
-
-func (s ByLCTime) Len() int {
-	return len(s)
-}
-func (s ByLCTime) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s ByLCTime) Less(i, j int) bool {
-	return s[i].CreatedTime.Unix() < s[j].CreatedTime.Unix()
-}
-
-type tag struct {
-	asgName   string
-	tagName   string
-	tagValue  string
-	propagate bool
-}
 
 type DeployCommand struct {
 	Ui       cli.ColoredUi
 	Notifier BasicNotifier
+	Apps     []core.SuripuApp
 }
 
 func (c *DeployCommand) Help() string {
@@ -57,70 +38,24 @@ Plan:
 
 	desiredCapacity := int64(1)
 
-	c.Ui.Output("Which app would you like to deploy?")
-
-	for idx, app := range suripuApps {
-		c.Ui.Output(fmt.Sprintf("[%d] %s", idx, app.name))
-	}
-
-	appSel, err := c.Ui.Ask("Select an app #: ")
-	appIdx, _ := strconv.Atoi(appSel)
-
-	if err != nil || appIdx >= len(suripuApps) {
-		c.Ui.Error(fmt.Sprintf("Incorrect app selection: %s\n", err))
+	appSelector := core.NewCliAppSelector(c.Ui)
+	selectedApp, err := appSelector.Choose(c.Apps)
+	if err != nil {
+		c.Ui.Error(err.Error())
 		return 1
 	}
 
-	lcParams := &autoscaling.DescribeLaunchConfigurationsInput{
-		MaxRecords: aws.Int64(100),
-	}
+	lcSelector := core.NewCliLaunchConfigurationSelector(c.Ui, service)
 
-	pageNum := 0
-	appPossibleLCs := make([]*autoscaling.LaunchConfiguration, 0)
-
-	pageErr := service.DescribeLaunchConfigurationsPages(lcParams, func(page *autoscaling.DescribeLaunchConfigurationsOutput, lastPage bool) bool {
-		pageNum++
-		if len(page.LaunchConfigurations) == 0 {
-			c.Ui.Error(fmt.Sprintf("No launch configuration found for app: %s", suripuApps[appIdx].name))
-			return false
-		}
-
-		for _, stuff := range page.LaunchConfigurations {
-			if strings.HasPrefix(*stuff.LaunchConfigurationName, suripuApps[appIdx].name) {
-				appPossibleLCs = append(appPossibleLCs, stuff)
-			}
-		}
-		return pageNum <= 2 //Allow for 200 possible LCs
-	})
-
-	if pageErr != nil {
-		c.Ui.Error(fmt.Sprintf("%s", err))
+	lcName, err := lcSelector.Choose(selectedApp)
+	if err != nil {
+		c.Ui.Error(err.Error())
 		return 1
 	}
 
-	c.Ui.Info("Latest 5 Launch Configurations")
-	c.Ui.Info(" #\tName:                               \tCreated At:")
-	c.Ui.Info("---|---------------------------------------|---------------")
-	sort.Sort(sort.Reverse(ByLCTime(appPossibleLCs)))
-
-	numLCs := Min(len(appPossibleLCs), 5)
-	for lcIdx := 0; lcIdx < numLCs; lcIdx++ {
-		c.Ui.Info(fmt.Sprintf("[%d]\t%-36s\t%s", lcIdx, *appPossibleLCs[lcIdx].LaunchConfigurationName, appPossibleLCs[lcIdx].CreatedTime.String()))
-	}
-
-	c.Ui.Output("")
-	lc, err := c.Ui.Ask("Select a launch configuration (LC) #: ")
-	lcNum, _ := strconv.Atoi(lc)
-
-	if err != nil || lcNum >= len(appPossibleLCs) {
-		c.Ui.Error(fmt.Sprintf("Error reading app #: %s", err))
-		return 1
-	}
-
-	lcName := *appPossibleLCs[lcNum].LaunchConfigurationName
 	c.Ui.Info(fmt.Sprintf("--> proceeding with LC : %s", lcName))
 
-	appName := suripuApps[appIdx].name
+	appName := selectedApp.Name
 
 	groupnames := make([]*string, 2)
 	one := fmt.Sprintf("%s-prod", appName)
@@ -182,30 +117,30 @@ Plan:
 
 			c.Notifier.Notify(deployAction)
 
-			tags := []tag{
+			tags := []core.Tag{
 				{
-					asgName:   asgName,
-					tagName:   "Launch Configuration",
-					tagValue:  lcName,
-					propagate: true,
+					AsgName:   asgName,
+					TagName:   "Launch Configuration",
+					TagValue:  lcName,
+					Propagate: true,
 				},
 				{
-					asgName:   asgName,
-					tagName:   "Name",
-					tagValue:  fmt.Sprintf("%s-prod", appName),
-					propagate: true,
+					AsgName:   asgName,
+					TagName:   "Name",
+					TagValue:  fmt.Sprintf("%s-prod", appName),
+					Propagate: true,
 				},
 				{
-					asgName:   asgName,
-					tagName:   "Env",
-					tagValue:  "prod",
-					propagate: true,
+					AsgName:   asgName,
+					TagName:   "Env",
+					TagValue:  "prod",
+					Propagate: true,
 				},
 				{
-					asgName:   asgName,
-					tagName:   "Service",
-					tagValue:  appName,
-					propagate: true,
+					AsgName:   asgName,
+					TagName:   "Service",
+					TagValue:  appName,
+					Propagate: true,
 				},
 			}
 
@@ -229,17 +164,17 @@ Plan:
 	return 0
 }
 
-func (c *DeployCommand) updateASGTags(service *autoscaling.AutoScaling, tagsToUpdate []tag) (*autoscaling.CreateOrUpdateTagsOutput, error) {
+func (c *DeployCommand) updateASGTags(service *autoscaling.AutoScaling, tagsToUpdate []core.Tag) (*autoscaling.CreateOrUpdateTagsOutput, error) {
 
 	tags := make([]*autoscaling.Tag, 0)
 
 	for _, tag := range tagsToUpdate {
 		awsTag := &autoscaling.Tag{ // Required
-			Key:               aws.String(tag.tagName), // Required
-			PropagateAtLaunch: aws.Bool(tag.propagate),
-			ResourceId:        aws.String(tag.asgName),
+			Key:               aws.String(tag.TagName), // Required
+			PropagateAtLaunch: aws.Bool(tag.Propagate),
+			ResourceId:        aws.String(tag.AsgName),
 			ResourceType:      aws.String("auto-scaling-group"),
-			Value:             aws.String(tag.tagValue),
+			Value:             aws.String(tag.TagValue),
 		}
 
 		tags = append(tags, awsTag)
