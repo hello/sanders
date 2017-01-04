@@ -108,4 +108,14 @@ var suripuApps []core.SuripuApp = []core.SuripuApp{
 		JavaVersion:           8,
 		PackagePath:           "com/hello",
 	},
+	{
+		Name:                  "taimurain-2",
+		SecurityGroup:         "sg-b3f631c8",
+		InstanceType:          "c4.xlarge",
+		InstanceProfile:       "taimurain",
+		TargetDesiredCapacity: 1,
+		UsesPacker:            true,
+		JavaVersion:           8,
+		PackagePath:           "com/hello",
+	},
 }
