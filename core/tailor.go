@@ -38,9 +38,18 @@ func (t *Tailor) Run(systemID, query string) error {
 	polling := false
 
 	for {
-		searchResp, _, err := client.Search(opt)
+		searchResp, httpResp, err := client.Search(opt)
+		if httpResp.StatusCode == 404 {
+			t.Ui.Info("Instance not ready, sleeping…")
+			time.Sleep(delay * 2)
+			continue
+		}
 		if searchResp == nil || err != nil {
 			return errors.New(fmt.Sprintf("Invalid token? %s: %s", token, err))
+		}
+
+		if httpResp.StatusCode != 200 {
+			return errors.New(fmt.Sprintf("Got http: %d", httpResp.StatusCode))
 		}
 
 		if len(searchResp.Events) == 0 {

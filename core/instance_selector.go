@@ -26,7 +26,10 @@ func (c *CliInstanceSelector) Choose(instances []*ec2.Instance) (*ec2.Instance, 
 	c.Ui.Output("Which app are we building for?")
 
 	for idx, instance := range instances {
-		c.Ui.Output(fmt.Sprintf("[%d] %s (%s)", idx, *instance.PrivateIpAddress, *instance.KeyName))
+		if instance.PrivateIpAddress != nil {
+
+			c.Ui.Output(fmt.Sprintf("[%d] %s (%s)", idx, *instance.PrivateIpAddress, *instance.KeyName))
+		}
 	}
 
 	appSel, err := c.Ui.Ask("Select an instance #: ")

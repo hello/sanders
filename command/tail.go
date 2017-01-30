@@ -65,7 +65,10 @@ func (c *TailCommand) Run(args []string) int {
 
 	selector := core.NewCliInstanceSelector(c.Ui)
 	selected, err := selector.Choose(instances)
-
+	if err != nil {
+		c.Ui.Error(err.Error())
+		return 1
+	}
 	// ip-0-0-0-0.ec2.internal -> ip-0-0-0-0
 	dnsParts := strings.SplitN(*selected.PrivateDnsName, ".", 2)
 	systemID := dnsParts[0]
@@ -74,7 +77,11 @@ func (c *TailCommand) Run(args []string) int {
 		Ui: c.Ui,
 	}
 
-	tailor.Run(systemID, *query)
+	tailErr := tailor.Run(systemID, *query)
+	if tailErr != nil {
+		c.Ui.Error(tailErr.Error())
+		return 1
+	}
 	return 0
 }
 
