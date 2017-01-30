@@ -178,6 +178,14 @@ func init() {
 			}, nil
 		},
 
+		"tail": func() (cli.Command, error) {
+			return &command.TailCommand{
+				Ui:   cui,
+				Apps: suripuApps,
+				Srv:  ec2service,
+			}, nil
+		},
+
 		"version": func() (cli.Command, error) {
 			return &command.VersionCommand{
 				Ui:        cui,
