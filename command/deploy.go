@@ -154,8 +154,8 @@ Plan:
 				c.Ui.Info("Tags successfully updated.")
 			}
 
-			c.Ui.Info("Update autoscaling group request acknowledged")
-			continue
+			c.Ui.Info(fmt.Sprintf("Update autoscaling group %s request acknowledged", asgName))
+			return 0
 		}
 		c.Ui.Warn(fmt.Sprintf("%s ignored because desired capacity is > 0", asgName))
 	}

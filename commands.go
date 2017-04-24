@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
@@ -11,15 +14,14 @@ import (
 	"github.com/hello/sanders/command"
 	"github.com/hello/sanders/core"
 	"github.com/mitchellh/cli"
-	"os"
-	"os/signal"
 )
 
 // Commands is the mapping of all the available Serf commands.
 var Commands map[string]cli.CommandFactory
 
 var (
-	UiColorBlack = cli.UiColor{37, false}
+	// UIColorBlack is black color for colored UI
+	UIColorBlack = cli.UiColor{Code: 37, Bold: false}
 
 	//This hash should be updated anytime default_userdata.sh is updated on S3
 	expectedUserDataHash = "0011ed8a3aeaffa830620d16e39f84549cb0c6cb"

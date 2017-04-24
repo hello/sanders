@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/mitchellh/cli"
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/mitchellh/cli"
 )
 
+// GitCommit holds the sha of the commit to identify the build version
 var GitCommit string
 
 func main() {
@@ -38,7 +40,7 @@ func realMain() int {
 	}
 
 	cli := &cli.CLI{
-		Name: "sanders",
+		Name:     "sanders",
 		Args:     args,
 		Commands: Commands,
 	}

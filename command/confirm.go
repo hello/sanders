@@ -156,6 +156,7 @@ Plan:
 			// fmt.Println(*updateReq.AutoScalingGroupName)
 
 			c.Ui.Info("Update autoscaling group request acknowledged")
+			return 0
 		}
 	}
 

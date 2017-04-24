@@ -4,7 +4,7 @@ import (
 	"github.com/hello/sanders/core"
 )
 
-var suripuApps []core.SuripuApp = []core.SuripuApp{
+var suripuApps = []core.SuripuApp{
 	{
 		Name:                  "suripu-app",
 		SecurityGroup:         "sg-d28624b6",
