@@ -8,7 +8,7 @@ var suripuApps = []core.SuripuApp{
 	{
 		Name:                  "suripu-app",
 		SecurityGroup:         "sg-d28624b6",
-		InstanceType:          "c3.large",
+		InstanceType:          "t2.medium",
 		InstanceProfile:       "suripu-app",
 		TargetDesiredCapacity: 2,
 		UsesPacker:            false,
