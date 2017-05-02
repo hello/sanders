@@ -20,7 +20,7 @@ var suripuApps = []core.SuripuApp{
 		SecurityGroup:         "sg-11ac0e75",
 		InstanceType:          "t2.medium",
 		InstanceProfile:       "suripu-service",
-		TargetDesiredCapacity: 4,
+		TargetDesiredCapacity: 3,
 		UsesPacker:            false,
 		JavaVersion:           8,
 		PackagePath:           "com/hello/suripu",
