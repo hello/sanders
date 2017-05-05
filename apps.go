@@ -75,7 +75,7 @@ var suripuApps = []core.SuripuApp{
 		InstanceProfile:       "hello-time",
 		TargetDesiredCapacity: 2,
 		UsesPacker:            false,
-		JavaVersion:           7,
+		JavaVersion:           8,
 		PackagePath:           "com/hello/time",
 	},
 	{
