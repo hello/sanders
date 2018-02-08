@@ -99,11 +99,11 @@ var suripuApps = []core.SuripuApp{
 		PackagePath:           "com/hello",
 	},
 	{
-		Name:                  "taimurain",
+		Name:                  "taimurain-2",
 		SecurityGroup:         "sg-b3f631c8",
 		InstanceType:          "c4.xlarge",
 		InstanceProfile:       "taimurain",
-		TargetDesiredCapacity: 3,
+		TargetDesiredCapacity: 2,
 		UsesPacker:            true,
 		JavaVersion:           8,
 		PackagePath:           "com/hello",
